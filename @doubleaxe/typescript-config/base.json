@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Base tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "target": "es2022",
+    "lib": ["es2023"],
+    "newLine": "LF",
+
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "resolvePackageJsonImports": true,
+    "verbatimModuleSyntax": true,
+
+    "sourceMap": true,
+    "declaration": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Node tsconfig.json",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "module": "node16",
+    "moduleResolution": "node16"
+  },
+  "ts-node": {
+    "transpileOnly": true,
+    "esm": false
+  }
+}

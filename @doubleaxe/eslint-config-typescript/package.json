@@ -1,0 +1,21 @@
+{
+  "name": "@doubleaxe/eslint-config-typescript",
+  "version": "1.0.0",
+  "description": "Preferred typescript eslint config for my projects.",
+  "keywords": [
+    "eslint",
+    "eslintconfig",
+    "eslint-config"
+  ],
+  "author": "Alexey Usov (dax@xdax.ru, https://github.com/doubleaxe)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doubleaxe/dax-javascript-commons"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@doubleaxe/eslint-config": "workspace:^"
+  },
+  "peerDependencies": {}
+}

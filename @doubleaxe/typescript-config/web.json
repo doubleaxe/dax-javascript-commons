@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Web tsconfig.json",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom"],
+    "module": "es2022",
+    "moduleResolution": "bundler"
+  }
+}
