@@ -6,7 +6,7 @@ const root = require('./root');
 
 /** @type {import("eslint").Linter.RulesRecord} */
 const rules = {
-    'default-param-last': ['error'],
+    'default-param-last': 'error',
     'dot-notation': [
         'error',
         {
@@ -14,8 +14,8 @@ const rules = {
             allowPattern: '',
         },
     ],
-    'global-require': ['error'],
-    'import/export': ['error'],
+    'global-require': 'error',
+    'import/export': 'error',
     'import/extensions': [
         'error',
         'ignorePackages',
@@ -25,10 +25,10 @@ const rules = {
             jsx: 'never',
         },
     ],
-    'import/no-absolute-path': ['error'],
-    'import/no-duplicates': ['error'],
-    'import/no-mutable-exports': ['error'],
-    'import/no-self-import': ['error'],
+    'import/no-absolute-path': 'error',
+    'import/no-duplicates': 'error',
+    'import/no-mutable-exports': 'error',
+    'import/no-self-import': 'error',
     'import/no-useless-path-segments': [
         'error',
         {
@@ -39,7 +39,7 @@ const rules = {
     'import/order': [
         'error',
         {
-            'groups': ['builtin', 'external', 'parent', 'sibling', 'type'],
+            'groups': ['builtin', ['external', 'internal'], 'parent', 'sibling', 'type'],
             'newlines-between': 'always-and-inside-groups',
             'alphabetize': {
                 order: 'asc',
@@ -50,10 +50,11 @@ const rules = {
             'warnOnUnassignedImports': false,
         },
     ],
-    'no-multi-assign': ['error'],
-    'no-nested-ternary': ['error'],
-    'no-param-reassign': ['off'],
-    'no-shadow': ['error'],
+    'max-params': 'off',
+    'no-loop-func': 'error',
+    'no-multi-assign': 'error',
+    'no-nested-ternary': 'error',
+    'no-param-reassign': 'off',
     'no-with': 'error',
     'object-shorthand': [
         'error',
@@ -70,6 +71,7 @@ const rules = {
             ignoreReadBeforeAssign: true,
         },
     ],
+    'require-await': 'error',
 };
 
 /** @type {import("eslint").Linter.FlatConfig[]} */
