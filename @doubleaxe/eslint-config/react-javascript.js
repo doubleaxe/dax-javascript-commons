@@ -3,6 +3,7 @@ const path = require('node:path');
 const { FlatCompat } = require('@eslint/eslintrc');
 const react = require('eslint-plugin-react/configs/recommended');
 const hooks = require('eslint-plugin-react-hooks');
+const reactRefresh = require('eslint-plugin-react-refresh');
 
 const jsconfig = require('./javascript');
 
@@ -30,6 +31,7 @@ const rules = {
     'react/no-redundant-should-component-update': 'error',
     'react/no-this-in-sfc': 'error',
     'react/style-prop-object': 'error',
+    'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 };
 /** @type {import("eslint").Linter.FlatConfig[]} */
 const recommended = jsconfig.utils.extendFiles(
@@ -38,6 +40,7 @@ const recommended = jsconfig.utils.extendFiles(
         ...compat.config(hooks.configs.recommended),
         {
             name: 'doubleaxe/recommended/react',
+            plugins: { 'react-refresh': reactRefresh },
             rules,
             settings: {
                 react: {
