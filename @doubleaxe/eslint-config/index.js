@@ -1,4 +1,4 @@
-const jsconfig = require('@doubleaxe/eslint-config/javascript');
+const jsconfig = require('./javascript');
 
 module.exports = {
     configs: {

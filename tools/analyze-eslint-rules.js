@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+// npx eslint --print-config file-typescript.ts > typescript.json
 const fileName = process.argv[2];
 
 const json = JSON.parse(fs.readFileSync(fileName, 'utf8'));

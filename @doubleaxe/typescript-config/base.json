@@ -5,6 +5,7 @@
     "types": [],
     "target": "es2022",
     "lib": ["es2023"],
+    "moduleResolution": "bundler",
     "newLine": "LF",
 
     "strict": true,

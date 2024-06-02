@@ -1,0 +1,7 @@
+{
+  "extends": "@doubleaxe/typescript-config/base.json",
+  "include": ["**/*.ts", "**/*.tsx", "**/*.vue"],
+  "compilerOptions": {
+    "jsx": "preserve"
+  }
+}

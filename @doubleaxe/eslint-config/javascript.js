@@ -1,5 +1,6 @@
 const alloy = require('eslint-config-alloy/base');
 const importPlugin = require('eslint-plugin-import');
+const simpleImportSortPlugin = require('eslint-plugin-simple-import-sort');
 const globals = require('globals');
 
 const root = require('./root');
@@ -34,20 +35,6 @@ const rules = {
         {
             noUselessIndex: true,
             commonjs: true,
-        },
-    ],
-    'import/order': [
-        'error',
-        {
-            'groups': ['builtin', ['external', 'internal'], 'parent', 'sibling', 'type'],
-            'newlines-between': 'always-and-inside-groups',
-            'alphabetize': {
-                order: 'asc',
-                caseInsensitive: false,
-                orderImportKind: 'ignore',
-            },
-            'distinctGroup': true,
-            'warnOnUnassignedImports': false,
         },
     ],
     'max-params': 'off',
@@ -87,6 +74,7 @@ const recommended = [
             parserOptions: {
                 ecmaFeatures: {
                     impliedStrict: true,
+                    jsx: true,
                 },
             },
         },
@@ -95,12 +83,45 @@ const recommended = [
         settings: {
             'import/resolver': {
                 node: {
-                    extensions: ['.mjs', '.js', '.json'],
+                    extensions: ['.mjs', '.cjs', '.js', '.json'],
                 },
             },
-            'import/extensions': ['.js', '.mjs', '.jsx'],
+            'import/extensions': ['.mjs', '.cjs', '.js', '.jsx', '.mjsx'],
             'import/core-modules': [],
             'import/ignore': ['node_modules', '\\.(coffee|scss|css|less|hbs|svg|json)$'],
+        },
+    },
+];
+
+/** @type {import("eslint").Linter.FlatConfig[]} */
+const importSortCommonjs = [
+    {
+        rules: {
+            'import/order': [
+                'error',
+                {
+                    'groups': ['builtin', ['external', 'internal'], 'parent', 'sibling', 'type'],
+                    'newlines-between': 'always-and-inside-groups',
+                    'alphabetize': {
+                        order: 'asc',
+                        caseInsensitive: false,
+                        orderImportKind: 'ignore',
+                    },
+                    'distinctGroup': true,
+                    'warnOnUnassignedImports': false,
+                },
+            ],
+        },
+    },
+];
+
+/** @type {import("eslint").Linter.FlatConfig[]} */
+const importSortSimple = [
+    {
+        plugins: { 'simple-import-sort': simpleImportSortPlugin },
+        rules: {
+            'simple-import-sort/imports': 'error',
+            'simple-import-sort/exports': 'error',
         },
     },
 ];
@@ -109,6 +130,8 @@ module.exports = {
     configs: {
         ...root.configs,
         recommended,
+        importSortCommonjs,
+        importSortSimple,
     },
     utils: root.utils,
 };

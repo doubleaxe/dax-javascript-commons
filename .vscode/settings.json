@@ -21,5 +21,6 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  "eslint.onIgnoredFiles": "warn"
+  "eslint.onIgnoredFiles": "warn",
+  "eslint.experimental.useFlatConfig": true
 }

@@ -1,5 +1,6 @@
-const jsconfig = require('@doubleaxe/eslint-config');
 const ts = require('typescript-eslint');
+
+const jsconfig = require('./javascript');
 
 // typescript recommended are much better than alloy ones for typescript
 /** @type {import("eslint").Linter.RulesRecord} */
@@ -66,20 +67,33 @@ const recommended = jsconfig.utils.extendFiles(
                 'import/resolver': {
                     typescript: true,
                     node: {
-                        extensions: ['.mjs', '.js', '.json', '.ts', '.d.ts'],
+                        extensions: ['.mjs', '.cjs', '.js', '.json', '.mts', '.cts', '.ts', '.d.ts'],
                     },
                 },
                 'import/parsers': {
-                    '@typescript-eslint/parser': ['.ts', '.tsx', '.d.ts'],
+                    '@typescript-eslint/parser': ['.mts', '.cts', '.ts', '.tsx', '.mtsx', '.d.ts'],
                 },
-                'import/extensions': ['.js', '.mjs', '.jsx', '.ts', '.tsx', '.d.ts'],
+                'import/extensions': [
+                    '.mjs',
+                    '.cjs',
+                    '.js',
+                    '.jsx',
+                    '.mjsx',
+                    '.mts',
+                    '.cts',
+                    '.ts',
+                    '.tsx',
+                    '.mtsx',
+                    '.d.ts',
+                ],
             },
         },
     ],
+    '**/*.mts',
+    '**/*.cts',
     '**/*.ts',
     '**/*.tsx',
-    '**/*.mts',
-    '**/*.cts'
+    '**/*.mtsx'
 );
 
 module.exports = {
