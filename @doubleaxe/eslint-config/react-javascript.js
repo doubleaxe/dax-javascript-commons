@@ -1,6 +1,7 @@
 const path = require('node:path');
 
 const { FlatCompat } = require('@eslint/eslintrc');
+const jsxRuntime = require('eslint-plugin-react/configs/jsx-runtime');
 const react = require('eslint-plugin-react/configs/recommended');
 const hooks = require('eslint-plugin-react-hooks');
 const reactRefresh = require('eslint-plugin-react-refresh');
@@ -37,6 +38,7 @@ const rules = {
 const recommended = jsconfig.utils.extendFiles(
     [
         react,
+        jsxRuntime,
         ...compat.config(hooks.configs.recommended),
         {
             name: 'doubleaxe/recommended/react',
