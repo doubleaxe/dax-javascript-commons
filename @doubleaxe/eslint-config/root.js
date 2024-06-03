@@ -7,7 +7,7 @@ const root = [
             '**/dist*/',
             '**/vendor/',
             '**/*.min.js',
-            '**/eslint.config.cjs',
+            '**/eslint.config.*',
             '**/.prettierrc.*',
         ],
     },
