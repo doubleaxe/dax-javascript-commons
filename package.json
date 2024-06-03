@@ -15,6 +15,9 @@
     "pnpm": ">=8"
   },
   "type": "commonjs",
+  "scripts": {
+    "pack-all": "pnpm run -r pack"
+  },
   "devDependencies": {
     "@doubleaxe/eslint-config": "workspace:^",
     "@doubleaxe/prettier-config": "workspace:^",

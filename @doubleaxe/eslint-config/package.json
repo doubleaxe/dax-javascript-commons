@@ -14,11 +14,13 @@
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
   "main": "index.js",
+  "scripts": {
+    "pack": "pnpm pack --pack-destination ../../dist"
+  },
   "dependencies": {
     "@eslint/eslintrc": "^2",
     "eslint-config-alloy": "^5.1.2",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-react-refresh": "^0.4.7",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "globals": ">= 15"
   },
@@ -26,6 +28,7 @@
     "eslint": ">= 8 < 9",
     "eslint-plugin-react": ">= 7",
     "eslint-plugin-react-hooks": ">= 4",
+    "eslint-plugin-react-refresh": ">= 0",
     "typescript-eslint": ">= 7"
   },
   "peerDependenciesMeta": {
@@ -33,6 +36,9 @@
       "optional": true
     },
     "eslint-plugin-react-hooks": {
+      "optional": true
+    },
+    "eslint-plugin-react-refresh": {
       "optional": true
     },
     "typescript-eslint": {
@@ -43,6 +49,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.2",
     "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
     "typescript-eslint": "^7.11.0"
   }
 }

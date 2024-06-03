@@ -10,5 +10,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
+  },
+  "scripts": {
+    "pack": "pnpm pack --pack-destination ../../dist"
   }
 }
