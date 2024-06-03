@@ -3,7 +3,7 @@
   "display": "Web tsconfig.json",
   "extends": "./base.json",
   "compilerOptions": {
-    "lib": ["es2023", "dom"],
+    "lib": ["es2023", "DOM", "DOM.Iterable"],
     "module": "es2022",
     "moduleResolution": "bundler"
   }
