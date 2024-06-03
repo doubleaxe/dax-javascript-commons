@@ -15,7 +15,7 @@
   },
   "main": "index.js",
   "dependencies": {
-    "@eslint/eslintrc": ">= 3",
+    "@eslint/eslintrc": "^2",
     "eslint-config-alloy": "^5.1.2",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-react-refresh": "^0.4.7",
@@ -26,7 +26,6 @@
     "eslint": ">= 8 < 9",
     "eslint-plugin-react": ">= 7",
     "eslint-plugin-react-hooks": ">= 4",
-    "typescript": ">= 5",
     "typescript-eslint": ">= 7"
   },
   "peerDependenciesMeta": {
@@ -34,9 +33,6 @@
       "optional": true
     },
     "eslint-plugin-react-hooks": {
-      "optional": true
-    },
-    "typescript": {
       "optional": true
     },
     "typescript-eslint": {
@@ -47,7 +43,6 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.2",
     "eslint-plugin-react-hooks": "^4.6.2",
-    "typescript": "^5.4.5",
     "typescript-eslint": "^7.11.0"
   }
 }
