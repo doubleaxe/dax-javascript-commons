@@ -21,8 +21,9 @@ const rules = {
         'error',
         'ignorePackages',
         {
-            js: 'never',
             mjs: 'never',
+            cjs: 'never',
+            js: 'never',
             jsx: 'never',
         },
     ],

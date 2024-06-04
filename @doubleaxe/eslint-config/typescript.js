@@ -45,6 +45,20 @@ const rules = {
     'no-throw-literal': 'off',
     '@typescript-eslint/only-throw-error': 'error',
     '@typescript-eslint/unified-signatures': 'error',
+    'import/extensions': [
+        'error',
+        'ignorePackages',
+        {
+            mjs: 'never',
+            cjs: 'never',
+            js: 'never',
+            jsx: 'never',
+            mts: 'never',
+            cts: 'never',
+            ts: 'never',
+            tsx: 'never',
+        },
+    ],
 };
 
 /** @type {import("eslint").Linter.FlatConfig[]} */
