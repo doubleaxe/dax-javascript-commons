@@ -1,15 +1,7 @@
 /** @type {import("eslint").Linter.FlatConfig[]} */
 const root = [
     {
-        ignores: [
-            '**/node_modules/',
-            '.git/',
-            '**/dist*/',
-            '**/vendor/',
-            '**/*.min.js',
-            '**/eslint.config.*',
-            '**/.prettierrc.*',
-        ],
+        ignores: ['**/node_modules/', '.git/', '**/dist*/', '**/vendor/', '**/*.min.js'],
     },
 ];
 
