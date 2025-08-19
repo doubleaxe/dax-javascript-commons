@@ -1,6 +1,6 @@
 {
   "name": "@doubleaxe/typescript-config",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Preferred typescript config for my projects.",
   "keywords": [
     "typescript"
@@ -13,5 +13,18 @@
   },
   "scripts": {
     "pack": "pnpm pack --pack-destination ../../dist"
+  },
+  "peerDependencies": {
+    "tslib": ">= 2",
+    "typescript": ">= 5.8"
+  },
+  "devDependencies": {
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3"
+  },
+  "peerDependenciesMeta": {
+    "tslib": {
+      "optional": true
+    }
   }
 }

@@ -4,11 +4,7 @@
   "extends": "./base.json",
   "compilerOptions": {
     "types": ["node"],
-    "module": "node16",
+    "module": "node20",
     "moduleResolution": "node16"
-  },
-  "ts-node": {
-    "transpileOnly": true,
-    "esm": false
   }
 }

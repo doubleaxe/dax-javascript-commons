@@ -3,7 +3,7 @@
   "display": "Base tsconfig.json",
   "compilerOptions": {
     "types": [],
-    "target": "es2022",
+    "target": "es2023",
     "lib": ["es2023"],
     "moduleResolution": "bundler",
     "newLine": "LF",
@@ -17,13 +17,16 @@
     "noUncheckedIndexedAccess": true,
 
     "allowSyntheticDefaultImports": true,
+    "erasableSyntaxOnly": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "resolvePackageJsonImports": true,
     "verbatimModuleSyntax": true,
+    "importHelpers": true,
 
     "sourceMap": true,
-    "declaration": false
+    "declaration": true,
+    "declarationMap": true
   }
 }

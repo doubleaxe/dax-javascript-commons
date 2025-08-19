@@ -1,6 +1,6 @@
 {
   "name": "dax-javascript-commons",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Collection of typescript, eslint, prettier configs.",
   "keywords": [],
   "author": "Alexey Usov (dax@xdax.ru, https://github.com/doubleaxe)",
@@ -9,10 +9,9 @@
     "type": "git",
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
-  "packageManager": "pnpm@8.10.5",
+  "packageManager": "pnpm@10.14.0",
   "engines": {
-    "node": ">=18",
-    "pnpm": ">=8"
+    "node": ">=22"
   },
   "type": "commonjs",
   "scripts": {
@@ -21,15 +20,7 @@
   "devDependencies": {
     "@doubleaxe/eslint-config": "workspace:^",
     "@doubleaxe/prettier-config": "workspace:^",
-    "eslint": "^8.57.0",
-    "globals": "^15.3.0",
-    "prettier": "^3.2.5"
-  },
-  "pnpm": {
-    "peerDependencyRules": {
-      "allowedVersions": {
-        "eslint": "8"
-      }
-    }
+    "eslint": "^9.33.0",
+    "prettier": "^3.6.2"
   }
 }

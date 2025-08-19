@@ -1,6 +1,6 @@
 {
   "name": "@doubleaxe/prettier-config",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Preferred prettier config for my projects.",
   "keywords": [
     "prettier"
@@ -20,6 +20,6 @@
     "prettier": ">= 3"
   },
   "devDependencies": {
-    "prettier": "^3.2.5"
+    "prettier": "^3.6.2"
   }
 }
