@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmitOnError": false,
+    "outDir": "./dist",
+    "module": "nodenext",
+    "target": "esnext",
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.js"],
+  "exclude": ["**/node_modules/**", "**/*.d.ts"]
+}

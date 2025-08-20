@@ -13,7 +13,7 @@
     "type": "git",
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "pack": "pnpm pack --pack-destination ../../dist"
   },
