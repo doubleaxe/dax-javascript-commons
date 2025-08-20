@@ -29,13 +29,12 @@ const esNextRulesBase = {
         'error',
         {
             properties: 'never',
-            ignoreDestructuring: false,
-            ignoreImports: false,
-            ignoreGlobals: false,
+            ignoreDestructuring: true,
+            ignoreImports: true,
+            ignoreGlobals: true,
         },
     ],
     'consistent-return': ['error'],
-    'curly': ['error', 'multi-line'],
     'default-case-last': ['error'],
     'default-param-last': ['error'],
     'dot-notation': [
@@ -240,6 +239,12 @@ const esNextRulesBase = {
     'prefer-spread': ['error'],
     'prefer-template': ['error'],
     'symbol-description': ['error'],
+
+    'eqeqeq': ['error'],
+    'no-duplicate-imports': ['error', { includeExports: true, allowSeparateTypeImports: true }],
+    'no-unassigned-vars': ['error'],
+    'no-unmodified-loop-condition': ['error'],
+    'no-useless-assignment': ['error'],
 };
 
 /** @type {EslintConfig} */
