@@ -3,3 +3,4 @@ node_modules
 dist
 tmp
 pnpm-lock.yaml
+@doubleaxe/eslint-config/types

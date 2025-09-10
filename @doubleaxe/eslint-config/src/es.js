@@ -24,7 +24,6 @@ const esNextRulesBase = {
             allowVoid: false,
         },
     ],
-    'block-scoped-var': ['error'],
     'camelcase': [
         'error',
         {
@@ -55,12 +54,6 @@ const esNextRulesBase = {
             allowElseIf: true,
         },
     ],
-    'no-empty-function': [
-        'error',
-        {
-            allow: ['arrowFunctions', 'functions', 'methods'],
-        },
-    ],
     'no-eq-null': ['error'],
     'no-eval': ['error'],
     'no-extend-native': ['error'],
@@ -69,13 +62,7 @@ const esNextRulesBase = {
     'no-implied-eval': ['error'],
     'no-iterator': ['error'],
     'no-label-var': ['error'],
-    'no-labels': [
-        'error',
-        {
-            allowLoop: false,
-            allowSwitch: false,
-        },
-    ],
+    'no-labels': ['error'],
     'no-lone-blocks': ['error'],
     'no-lonely-if': ['error'],
     'no-loop-func': ['error'],
@@ -104,22 +91,12 @@ const esNextRulesBase = {
     'no-script-url': ['error'],
     'no-self-compare': ['error'],
     'no-sequences': ['error'],
-    'no-shadow': ['error'],
+    'no-shadow': ['error', { builtinGlobals: true }],
     'no-template-curly-in-string': ['error'],
     'no-throw-literal': ['error'],
     'no-undef-init': ['error'],
-    'no-unneeded-ternary': [
-        'error',
-        {
-            defaultAssignment: false,
-        },
-    ],
-    'no-unreachable-loop': [
-        'error',
-        {
-            ignore: [],
-        },
-    ],
+    'no-unneeded-ternary': ['error'],
+    'no-unreachable-loop': ['error'],
     'no-unused-expressions': [
         'error',
         {
@@ -159,7 +136,6 @@ const esNextRulesBase = {
         },
     ],
     'one-var': ['error', 'never'],
-    'operator-assignment': ['error', 'always'],
     'prefer-const': [
         'error',
         {
@@ -204,13 +180,6 @@ const esNextRulesBase = {
     'prefer-numeric-literals': ['error'],
     'prefer-object-spread': ['error'],
 
-    'arrow-body-style': [
-        'error',
-        'as-needed',
-        {
-            requireReturnForObjectLiteral: false,
-        },
-    ],
     'no-restricted-exports': [
         'error',
         {
@@ -219,21 +188,8 @@ const esNextRulesBase = {
     ],
     'no-useless-computed-key': ['error'],
     'no-useless-constructor': ['error'],
-    'no-useless-rename': [
-        'error',
-        {
-            ignoreDestructuring: false,
-            ignoreImport: false,
-            ignoreExport: false,
-        },
-    ],
-    'prefer-arrow-callback': [
-        'error',
-        {
-            allowNamedFunctions: false,
-            allowUnboundThis: true,
-        },
-    ],
+    'no-useless-rename': ['error'],
+    'prefer-arrow-callback': ['error'],
     'prefer-exponentiation-operator': ['error'],
     'prefer-rest-params': ['error'],
     'prefer-spread': ['error'],

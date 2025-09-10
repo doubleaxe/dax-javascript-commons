@@ -1,3 +1,5 @@
 packages:
-  - '@doubleaxe/*'
+  - '@doubleaxe/eslint-config'
+  - '@doubleaxe/prettier-config'
+  - '@doubleaxe/typescript-config'
   - 'test'

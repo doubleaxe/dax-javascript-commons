@@ -2,4 +2,6 @@ node_modules
 dist
 *.code-workspace
 *.log
+*.bak
 tmp
+@doubleaxe/eslint-config/types
