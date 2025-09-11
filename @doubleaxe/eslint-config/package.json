@@ -19,7 +19,10 @@
   },
   "dependencies": {
     "@eslint/js": "^9.33.0",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^17.21.3",
+    "eslint-plugin-perfectionist": "^4.15.0",
+    "eslint-plugin-security": "^3.0.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^16.3.0"
   },
@@ -29,8 +32,8 @@
     "eslint-plugin-react-hooks": ">= 5",
     "eslint-plugin-react-refresh": ">= 0",
     "eslint-plugin-vue": ">= 10",
-    "vue-eslint-parser": ">= 10",
-    "typescript-eslint": ">= 8"
+    "typescript-eslint": ">= 8",
+    "vue-eslint-parser": ">= 10"
   },
   "peerDependenciesMeta": {
     "eslint-plugin-react": {
@@ -58,7 +61,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "eslint-plugin-vue": "^10.4.0",
-    "vue-eslint-parser": "^10.2.0",
-    "typescript-eslint": "^8.36.0"
+    "typescript-eslint": "^8.36.0",
+    "vue-eslint-parser": "^10.2.0"
   }
 }

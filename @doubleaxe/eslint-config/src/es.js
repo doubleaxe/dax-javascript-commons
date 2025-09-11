@@ -2,6 +2,8 @@ import globals from 'globals';
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
+import perfectionist from 'eslint-plugin-perfectionist';
+import importPlugin from 'eslint-plugin-import';
 
 import root from './root.js';
 
@@ -208,10 +210,34 @@ const esNextBase = {
     name: 'doubleaxe/esNext',
     rules: {
         ...esNextRulesBase,
-        'simple-import-sort/imports': 'error',
-        'simple-import-sort/exports': 'error',
+
+        'simple-import-sort/imports': ['error'],
+        'simple-import-sort/exports': ['error'],
+
+        'perfectionist/sort-array-includes': ['error'],
+        'perfectionist/sort-decorators': ['error'],
+        'perfectionist/sort-heritage-clauses': ['error'],
+        'perfectionist/sort-interfaces': ['error'],
+        'perfectionist/sort-intersection-types': ['error'],
+        'perfectionist/sort-jsx-props': ['error'],
+        'perfectionist/sort-maps': ['error'],
+        'perfectionist/sort-object-types': ['error'],
+        'perfectionist/sort-sets': ['error'],
+        'perfectionist/sort-switch-case': ['error'],
+        'perfectionist/sort-union-types': ['error'],
+
+        // only rules that don't require resolution (resolution is slow, complex to setup and buggy)
+        'import/no-mutable-exports': ['error'],
+        'import/no-commonjs': ['error'],
+        'import/no-absolute-path': ['error'],
+        'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
+        'import/no-duplicates': ['error'],
     },
-    plugins: { 'simple-import-sort': simpleImportSortPlugin },
+    plugins: {
+        'simple-import-sort': simpleImportSortPlugin,
+        perfectionist,
+        'import': importPlugin,
+    },
     languageOptions: {
         ecmaVersion: 2024,
         sourceType: 'module',
@@ -228,15 +254,14 @@ const esNextBase = {
     settings: {},
 };
 
+const esRecommended = { ...js.configs.recommended, name: 'eslint/recommended' };
+const esNext = root.utils.extendFiles(defineConfig(esRecommended, esNextBase), root.patterns.esFilter);
+
 export default {
     baseConfigs: {
-        ...root.baseConfigs,
         esNextBase,
     },
     configs: {
-        ...root.configs,
+        esNext,
     },
-    patterns: root.patterns,
-    utils: root.utils,
-    globals,
 };
