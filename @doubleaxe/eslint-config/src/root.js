@@ -11,30 +11,25 @@ import globals from 'globals';
 
 const ignores = ['**/node_modules/', '.git/', '.hg/', '**/dist*/', '**/vendor/', '**/*.min.js'];
 
-const toolsEs = [
-    '**/eslint.config.{js,mjs}',
-    '**/.prettierrc.{js,mjs}',
-    '**/.pnpmfile.{js,mjs}',
-    '**/webpack.config.mjs',
-    '**/stylelint.config.{js,mjs}',
-    '**/postcss.config.{js,mjs}',
-    '**/tailwind.config.{js,mjs}',
-    '**/jest.config.{js,mjs}',
-    '**/vitest.config.{js,mjs}',
-    '**/karma.conf.{js,mjs}',
-    '**/vite.config.{js,mjs}',
-    '**/rollup.config.{js,mjs}',
-    '**/esbuild.config.{js,mjs}',
+const tools = [
+    'eslint.config',
+    '.prettierrc',
+    '.pnpmfile',
+    'webpack.config',
+    'stylelint.config',
+    'postcss.config',
+    'tailwind.config',
+    'jest.config',
+    'vitest.config',
+    'karma.conf',
+    'vite.config',
+    'rollup.config',
+    'esbuild.config',
 ];
 
-const toolsTs = [
-    '**/jest.config.ts',
-    '**/vitest.config.ts',
-    '**/karma.conf.ts',
-    '**/vite.config.ts',
-    '**/rollup.config.ts',
-    '**/esbuild.config.ts',
-];
+// only modules supported for simplicity
+const toolsEs = tools.map((tool) => `**/${tool}.{js,mjs}`);
+const toolsTs = tools.map((tool) => `**/${tool}.{ts,mts}`);
 
 const esExtensions = ['js', 'mjs', 'jsx'];
 const esFilter = esExtensions.map((ext) => `**/*.${ext}`);
@@ -76,8 +71,14 @@ const utils = {
 /** @type {EslintConfig[]} */
 const root = [
     {
-        name: 'doubleaxe/root',
         ignores,
+    },
+    {
+        name: 'doubleaxe/root',
+        linterOptions: {
+            reportUnusedDisableDirectives: 'error',
+            reportUnusedInlineConfigs: 'error',
+        },
     },
 ];
 

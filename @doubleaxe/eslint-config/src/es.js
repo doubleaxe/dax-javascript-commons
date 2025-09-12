@@ -1,10 +1,12 @@
-import globals from 'globals';
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
-import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
-import perfectionist from 'eslint-plugin-perfectionist';
 import importPlugin from 'eslint-plugin-import';
+import perfectionist from 'eslint-plugin-perfectionist';
+import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
+import globals from 'globals';
 
+import browser from './browser.js';
+import node from './node.js';
 import root from './root.js';
 
 /**
@@ -22,17 +24,17 @@ const esNextRulesBase = {
         'error',
         {
             allowImplicit: true,
-            checkForEach: false,
             allowVoid: false,
+            checkForEach: false,
         },
     ],
     'camelcase': [
         'error',
         {
-            properties: 'never',
             ignoreDestructuring: true,
-            ignoreImports: true,
             ignoreGlobals: true,
+            ignoreImports: true,
+            properties: 'never',
         },
     ],
     'consistent-return': ['error'],
@@ -45,11 +47,19 @@ const esNextRulesBase = {
             allowPattern: '',
         },
     ],
+    'eqeqeq': ['error'],
     'grouped-accessor-pairs': ['error'],
     'no-alert': ['warn'],
     'no-array-constructor': ['error'],
     'no-caller': ['error'],
     'no-constructor-return': ['error'],
+    'no-duplicate-imports': [
+        'error',
+        {
+            allowSeparateTypeImports: true,
+            includeExports: true,
+        },
+    ],
     'no-else-return': [
         'error',
         {
@@ -78,57 +88,91 @@ const esNextRulesBase = {
     'no-octal-escape': ['error'],
     'no-promise-executor-return': ['error'],
     'no-proto': ['error'],
+    'no-restricted-exports': [
+        'error',
+        {
+            restrictedNamedExports: ['default', 'then'],
+        },
+    ],
     'no-restricted-globals': [
         'error',
         {
-            name: 'isFinite',
             message: 'Use Number.isFinite instead https://github.com/airbnb/javascript#standard-library--isfinite',
+            name: 'isFinite',
         },
         {
-            name: 'isNaN',
             message: 'Use Number.isNaN instead https://github.com/airbnb/javascript#standard-library--isnan',
+            name: 'isNaN',
+        },
+    ],
+    'no-restricted-properties': [
+        'error',
+        {
+            message: 'arguments.callee is deprecated',
+            object: 'arguments',
+            property: 'callee',
+        },
+        {
+            message: 'Please use Object.defineProperty instead.',
+            property: '__defineGetter__',
+        },
+        {
+            message: 'Please use Object.defineProperty instead.',
+            property: '__defineSetter__',
         },
     ],
     'no-return-assign': ['error', 'always'],
     'no-script-url': ['error'],
     'no-self-compare': ['error'],
     'no-sequences': ['error'],
-    'no-shadow': ['error', { builtinGlobals: true }],
+    'no-shadow': [
+        'error',
+        {
+            builtinGlobals: true,
+        },
+    ],
     'no-template-curly-in-string': ['error'],
     'no-throw-literal': ['error'],
+    'no-unassigned-vars': ['error'],
     'no-undef-init': ['error'],
+    'no-unmodified-loop-condition': ['error'],
     'no-unneeded-ternary': ['error'],
     'no-unreachable-loop': ['error'],
     'no-unused-expressions': [
         'error',
         {
             allowShortCircuit: true,
-            allowTernary: true,
             allowTaggedTemplates: false,
+            allowTernary: true,
             enforceForJSX: false,
         },
     ],
     'no-unused-vars': [
         'error',
         {
-            vars: 'all',
             args: 'after-used',
             argsIgnorePattern: '^_\\d*$',
-            destructuredArrayIgnorePattern: '^_\\d*$',
             caughtErrors: 'none',
+            destructuredArrayIgnorePattern: '^_\\d*$',
             ignoreRestSiblings: true,
             reportUsedIgnorePattern: true,
+            vars: 'all',
         },
     ],
     'no-use-before-define': [
         'error',
         {
-            functions: false,
             classes: false,
+            functions: false,
         },
     ],
+    'no-useless-assignment': ['error'],
+    'no-useless-computed-key': ['error'],
     'no-useless-concat': ['error'],
+    'no-useless-constructor': ['error'],
+    'no-useless-rename': ['error'],
     'no-useless-return': ['error'],
+    'no-var': ['error'],
     'no-void': ['error'],
     'object-shorthand': [
         'error',
@@ -138,6 +182,7 @@ const esNextRulesBase = {
         },
     ],
     'one-var': ['error', 'never'],
+    'prefer-arrow-callback': ['error'],
     'prefer-const': [
         'error',
         {
@@ -145,6 +190,9 @@ const esNextRulesBase = {
             ignoreReadBeforeAssign: true,
         },
     ],
+    'prefer-exponentiation-operator': ['error'],
+    'prefer-numeric-literals': ['error'],
+    'prefer-object-spread': ['error'],
     'prefer-promise-reject-errors': [
         'error',
         {
@@ -157,52 +205,14 @@ const esNextRulesBase = {
             disallowRedundantWrapping: true,
         },
     ],
-    'radix': ['error'],
-    'require-await': 'error',
-    'unicode-bom': ['error', 'never'],
-    'yoda': ['error'],
-
-    'no-restricted-properties': [
-        'error',
-        {
-            object: 'arguments',
-            property: 'callee',
-            message: 'arguments.callee is deprecated',
-        },
-        {
-            property: '__defineGetter__',
-            message: 'Please use Object.defineProperty instead.',
-        },
-        {
-            property: '__defineSetter__',
-            message: 'Please use Object.defineProperty instead.',
-        },
-    ],
-    'no-var': ['error'],
-    'prefer-numeric-literals': ['error'],
-    'prefer-object-spread': ['error'],
-
-    'no-restricted-exports': [
-        'error',
-        {
-            restrictedNamedExports: ['default', 'then'],
-        },
-    ],
-    'no-useless-computed-key': ['error'],
-    'no-useless-constructor': ['error'],
-    'no-useless-rename': ['error'],
-    'prefer-arrow-callback': ['error'],
-    'prefer-exponentiation-operator': ['error'],
     'prefer-rest-params': ['error'],
     'prefer-spread': ['error'],
     'prefer-template': ['error'],
+    'radix': ['error'],
+    'require-await': 'error',
     'symbol-description': ['error'],
-
-    'eqeqeq': ['error'],
-    'no-duplicate-imports': ['error', { includeExports: true, allowSeparateTypeImports: true }],
-    'no-unassigned-vars': ['error'],
-    'no-unmodified-loop-condition': ['error'],
-    'no-useless-assignment': ['error'],
+    'unicode-bom': ['error', 'never'],
+    'yoda': ['error'],
 };
 
 /** @type {EslintConfig} */
@@ -211,8 +221,12 @@ const esNextBase = {
     rules: {
         ...esNextRulesBase,
 
-        'simple-import-sort/imports': ['error'],
-        'simple-import-sort/exports': ['error'],
+        // only rules that don't require resolution (resolution is slow, complex to setup and buggy)
+        'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
+        'import/no-absolute-path': ['error'],
+        'import/no-commonjs': ['error'],
+        'import/no-duplicates': ['error'],
+        'import/no-mutable-exports': ['error'],
 
         'perfectionist/sort-array-includes': ['error'],
         'perfectionist/sort-decorators': ['error'],
@@ -226,17 +240,13 @@ const esNextBase = {
         'perfectionist/sort-switch-case': ['error'],
         'perfectionist/sort-union-types': ['error'],
 
-        // only rules that don't require resolution (resolution is slow, complex to setup and buggy)
-        'import/no-mutable-exports': ['error'],
-        'import/no-commonjs': ['error'],
-        'import/no-absolute-path': ['error'],
-        'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
-        'import/no-duplicates': ['error'],
+        'simple-import-sort/exports': ['error'],
+        'simple-import-sort/imports': ['error'],
     },
     plugins: {
-        'simple-import-sort': simpleImportSortPlugin,
-        perfectionist,
         'import': importPlugin,
+        perfectionist,
+        'simple-import-sort': simpleImportSortPlugin,
     },
     languageOptions: {
         ecmaVersion: 2024,
@@ -255,13 +265,26 @@ const esNextBase = {
 };
 
 const esRecommended = { ...js.configs.recommended, name: 'eslint/recommended' };
-const esNext = root.utils.extendFiles(defineConfig(esRecommended, esNextBase), root.patterns.esFilter);
+const esNextRoot = defineConfig(root.configs.root, esRecommended, esNextBase);
+
+const esNext = root.utils.extendFiles(esNextRoot, root.patterns.esFilter);
+
+const esNextTools = root.utils.extendFiles(defineConfig(esNextRoot, node.configs.node), root.patterns.toolsEs);
 
 export default {
+    ...root,
     baseConfigs: {
+        ...root.baseConfigs,
+        ...browser.baseConfigs,
+        ...node.baseConfigs,
         esNextBase,
     },
     configs: {
+        ...root.configs,
+        ...browser.configs,
+        ...node.configs,
+        esNextRoot,
         esNext,
+        esNextTools,
     },
 };

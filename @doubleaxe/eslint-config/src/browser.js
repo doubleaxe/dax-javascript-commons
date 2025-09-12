@@ -1,6 +1,6 @@
-import globals from 'globals';
 import { defineConfig } from 'eslint/config';
 import importPlugin from 'eslint-plugin-import';
+import globals from 'globals';
 
 /**
  * @typedef EslintConfig

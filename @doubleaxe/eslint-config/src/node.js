@@ -1,7 +1,7 @@
-import globals from 'globals';
 import { defineConfig } from 'eslint/config';
-import pluginSecurity from 'eslint-plugin-security';
 import nodePlugin from 'eslint-plugin-n';
+import pluginSecurity from 'eslint-plugin-security';
+import globals from 'globals';
 
 /**
  * @typedef EslintConfig
@@ -21,8 +21,8 @@ const node = defineConfig(pluginSecurity.configs.recommended, {
         'n/no-deprecated-api': ['error'],
         'n/no-unsupported-features/es-builtins': ['error'],
         'n/no-unsupported-features/es-syntax': ['error', { ignores: ['modules'] }],
-        'no-unsupported-features/node-builtins': ['error'],
-        'n/prefer-node-protocol': 'error',
+        'n/no-unsupported-features/node-builtins': ['error'],
+        'n/prefer-node-protocol': ['error'],
     },
     plugins: {
         n: nodePlugin,
