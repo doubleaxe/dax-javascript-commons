@@ -89,4 +89,9 @@ export default {
         reactEsNextRoot,
         reactEsNext,
     },
+    plugins: {
+        ...es.plugins,
+        'react': es.utils.inferPlugin(reactPlugin),
+        'react-refresh': es.utils.inferPlugin(reactRefresh),
+    },
 };

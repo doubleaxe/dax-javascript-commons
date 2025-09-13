@@ -100,4 +100,8 @@ export default {
         vueEsNextRoot,
         vueEsNext,
     },
+    plugins: {
+        ...es.plugins,
+        vue: es.utils.inferPlugin(pluginVue),
+    },
 };

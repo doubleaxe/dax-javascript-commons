@@ -287,4 +287,12 @@ export default {
         esNext,
         esNextTools,
     },
+    plugins: {
+        ...root.plugins,
+        ...browser.plugins,
+        ...node.plugins,
+        'import': root.utils.inferPlugin(importPlugin),
+        'perfectionist': root.utils.inferPlugin(perfectionist),
+        'simple-import-sort': root.utils.inferPlugin(simpleImportSortPlugin),
+    },
 };

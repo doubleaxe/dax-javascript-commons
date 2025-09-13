@@ -2,6 +2,8 @@ import { defineConfig } from 'eslint/config';
 import importPlugin from 'eslint-plugin-import';
 import globals from 'globals';
 
+import root from './root.js';
+
 /**
  * @typedef EslintConfig
  * @type {import("eslint").Linter.Config}
@@ -31,5 +33,8 @@ export default {
     baseConfigs: {},
     configs: {
         browser,
+    },
+    plugins: {
+        import: root.utils.inferPlugin(importPlugin),
     },
 };

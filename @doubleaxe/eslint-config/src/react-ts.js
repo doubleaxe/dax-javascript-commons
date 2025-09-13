@@ -46,4 +46,8 @@ export default {
         reactTsRoot,
         reactTs,
     },
+    plugins: {
+        ...ts.plugins,
+        ...reactEs.plugins,
+    },
 };

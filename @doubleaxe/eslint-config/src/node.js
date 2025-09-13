@@ -3,6 +3,8 @@ import nodePlugin from 'eslint-plugin-n';
 import pluginSecurity from 'eslint-plugin-security';
 import globals from 'globals';
 
+import root from './root.js';
+
 /**
  * @typedef EslintConfig
  * @type {import("eslint").Linter.Config}
@@ -39,5 +41,8 @@ export default {
     baseConfigs: {},
     configs: {
         node,
+    },
+    plugins: {
+        n: root.utils.inferPlugin(nodePlugin),
     },
 };

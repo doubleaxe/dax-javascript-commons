@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/*
+do not autofix this file, it contains linting error intentionally, for debugging
+*/
+
 const props = defineProps<{
     id?: string;
     name?: string;

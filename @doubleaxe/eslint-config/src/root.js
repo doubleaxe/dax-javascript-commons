@@ -40,6 +40,11 @@ const tsFilter = tsExtensions.map((ext) => `**/*.${ext}`);
 const vueExtensions = ['vue'];
 const vueFilter = vueExtensions.map((ext) => `**/*.${ext}`);
 
+/**
+ * @typedef EslintPlugin
+ * @type {import("eslint").ESLint.Plugin}
+ */
+
 const utils = {
     /**
      * @param {EslintConfig[]} configs
@@ -65,6 +70,14 @@ const utils = {
                 files: (config.files ?? []).concat(files.filter((file) => !config.files?.includes(file))),
             };
         });
+    },
+    /**
+     * @param {EslintPlugin} plugin
+     * @returns {EslintPlugin}
+     */
+    inferPlugin(plugin) {
+        // necessary for tsc
+        return plugin;
     },
 };
 
@@ -100,4 +113,5 @@ export default {
     },
     utils,
     globals,
+    plugins: {},
 };

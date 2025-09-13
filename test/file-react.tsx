@@ -1,3 +1,7 @@
+/*
+do not autofix this file, it contains linting error intentionally, for debugging
+*/
+
 import React from 'react';
 
 function App() {

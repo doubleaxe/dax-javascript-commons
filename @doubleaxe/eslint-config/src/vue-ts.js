@@ -52,4 +52,8 @@ export default {
         vueTsRoot,
         vueTs,
     },
+    plugins: {
+        ...ts.plugins,
+        ...vueEs.plugins,
+    },
 };

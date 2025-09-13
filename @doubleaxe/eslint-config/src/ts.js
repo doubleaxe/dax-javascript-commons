@@ -159,4 +159,8 @@ export default {
         ts,
         tsTools,
     },
+    plugins: {
+        ...es.plugins,
+        '@typescript-eslint': es.utils.inferPlugin(tseslint.plugin),
+    },
 };
