@@ -1,6 +1,6 @@
 {
   "name": "@doubleaxe/prettier-config",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Preferred prettier config for my projects.",
   "keywords": [
     "prettier"

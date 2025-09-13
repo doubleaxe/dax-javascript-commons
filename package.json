@@ -1,6 +1,5 @@
 {
   "name": "dax-javascript-commons",
-  "version": "1.0.3",
   "description": "Collection of typescript, eslint, prettier configs.",
   "keywords": [],
   "author": "Alexey Usov (dax@xdax.ru, https://github.com/doubleaxe)",

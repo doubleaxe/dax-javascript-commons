@@ -1,6 +1,6 @@
 {
   "name": "@doubleaxe/typescript-config",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Preferred typescript config for my projects.",
   "keywords": [
     "typescript"
