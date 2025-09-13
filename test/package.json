@@ -7,7 +7,8 @@
     "inspect-config": "eslint --inspect-config",
     "prettier-check-tsx": "eslint-config-prettier ./file-react.tsx",
     "prettier-check-vue": "eslint-config-prettier ./file-vue.vue",
-    "prettier-check": "run-s prettier-check-tsx prettier-check-vue"
+    "prettier-check": "run-s prettier-check-tsx prettier-check-vue",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@doubleaxe/eslint-config": "workspace:^",

@@ -1,3 +1,3 @@
-import es from '@doubleaxe/eslint-config/src/es.js';
+import es from '@doubleaxe/eslint-config/es';
 
 export default [...es.configs.esNext, ...es.configs.node];

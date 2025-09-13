@@ -1,5 +1,5 @@
-import reactTs from '@doubleaxe/eslint-config/src/react-ts.js';
-import vueTs from '@doubleaxe/eslint-config/src/vue-ts.js';
+import reactTs from '@doubleaxe/eslint-config/react-ts';
+import vueTs from '@doubleaxe/eslint-config/vue-ts';
 import { defineConfig } from 'eslint/config';
 
 const config = defineConfig(

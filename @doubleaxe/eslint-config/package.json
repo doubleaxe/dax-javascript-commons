@@ -14,6 +14,38 @@
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
   "type": "module",
+  "main": "./src/index.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./es": {
+      "types": "./types/es.d.ts",
+      "default": "./src/es.js"
+    },
+    "./ts": {
+      "types": "./types/ts.d.ts",
+      "default": "./src/ts.js"
+    },
+    "./react-es": {
+      "types": "./types/react-es.d.ts",
+      "default": "./src/react-es.js"
+    },
+    "./react-ts": {
+      "types": "./types/react-ts.d.ts",
+      "default": "./src/react-ts.js"
+    },
+    "./vue-es": {
+      "types": "./types/vue-es.d.ts",
+      "default": "./src/vue-es.js"
+    },
+    "./vue-ts": {
+      "types": "./types/vue-ts.d.ts",
+      "default": "./src/vue-ts.js"
+    }
+  },
   "scripts": {
     "clean": "rimraf ./types",
     "build": "tsc",
