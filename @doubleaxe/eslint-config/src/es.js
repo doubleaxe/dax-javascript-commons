@@ -19,7 +19,7 @@ import root from './root.js';
  */
 
 /** @type {EslintRules} */
-const esNextRulesBase = {
+const rules = {
     'array-callback-return': [
         'error',
         {
@@ -167,7 +167,6 @@ const esNextRulesBase = {
             functions: false,
         },
     ],
-    'no-useless-assignment': ['error'],
     'no-useless-computed-key': ['error'],
     'no-useless-concat': ['error'],
     'no-useless-constructor': ['error'],
@@ -220,7 +219,7 @@ const esNextRulesBase = {
 const esNextBase = {
     name: 'doubleaxe/esNext',
     rules: {
-        ...esNextRulesBase,
+        ...rules,
 
         // only rules that don't require resolution (resolution is slow, complex to setup and buggy)
         'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],

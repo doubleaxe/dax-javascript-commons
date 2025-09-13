@@ -16,7 +16,8 @@ import vueEs from './vue-es.js';
  */
 
 /** @type {EslintRules} */
-export const rules = {
+const rules = {
+    'vue/camelcase': ['off'],
     'vue/define-emits-declaration': ['error'],
     'vue/define-props-declaration': ['error'],
     'vue/require-typed-ref': ['error'],

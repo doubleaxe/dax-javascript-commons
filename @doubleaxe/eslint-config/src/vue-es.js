@@ -14,7 +14,31 @@ import es from './es.js';
  */
 
 /** @type {EslintRules} */
-export const rules = {
+const extensionRules = {
+    'vue/camelcase': [
+        'error',
+        {
+            ignoreDestructuring: true,
+            ignoreGlobals: true,
+            ignoreImports: true,
+        },
+    ],
+    'vue/eqeqeq': ['error'],
+    'vue/no-loss-of-precision': ['error'],
+    'vue/no-sparse-arrays': ['error'],
+    'vue/no-useless-concat': ['error'],
+    'vue/object-shorthand': [
+        'error',
+        'always',
+        {
+            avoidQuotes: true,
+        },
+    ],
+    'vue/prefer-template': ['error'],
+};
+
+/** @type {EslintRules} */
+const rules = {
     'vue/component-name-in-template-casing': [
         'error',
         'PascalCase',
@@ -22,7 +46,7 @@ export const rules = {
             registeredComponentsOnly: false,
         },
     ],
-    'vue/custom-event-name-casing': ['error', 'kebab-case'],
+    'vue/custom-event-name-casing': ['error'],
     'vue/define-macros-order': ['error'],
     // prettier conflict
     'vue/html-end-tags': ['off'],
@@ -47,7 +71,7 @@ export const rules = {
 const vueEsNextBase = {
     name: 'doubleaxe/vue3/esNext',
     plugins: { vue: pluginVue },
-    rules,
+    rules: { ...rules, ...extensionRules },
     languageOptions: {
         parser: parserVue,
     },
