@@ -95,6 +95,12 @@ const root = [
     },
 ];
 
+/**
+ * less size for *.d.ts
+ * @type {Record<string, Record<string, boolean>>}
+ */
+const inferGlobals = globals;
+
 export default {
     baseConfigs: {},
     configs: {
@@ -112,6 +118,6 @@ export default {
         vueFilter,
     },
     utils,
-    globals,
+    globals: inferGlobals,
     plugins: {},
 };
