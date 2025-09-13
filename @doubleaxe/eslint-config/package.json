@@ -1,6 +1,6 @@
 {
   "name": "@doubleaxe/eslint-config",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Preferred eslint config for my projects.",
   "keywords": [
     "eslint",
