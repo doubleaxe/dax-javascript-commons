@@ -34,7 +34,6 @@ const esNextRulesBase = {
             ignoreDestructuring: true,
             ignoreGlobals: true,
             ignoreImports: true,
-            properties: 'never',
         },
     ],
     'consistent-return': ['error'],
@@ -134,6 +133,8 @@ const esNextRulesBase = {
     'no-template-curly-in-string': ['error'],
     'no-throw-literal': ['error'],
     'no-unassigned-vars': ['error'],
+    // conflicts with prettier
+    'no-unexpected-multiline': ['off'],
     'no-undef-init': ['error'],
     'no-unmodified-loop-condition': ['error'],
     'no-unneeded-ternary': ['error'],

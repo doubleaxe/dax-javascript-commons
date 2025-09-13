@@ -27,7 +27,11 @@ const reactTsBase = {
 
 const reactTsRoot = defineConfig(reactEs.configs.reactEsNextRoot, reactTsBase);
 
-const reactTs = ts.utils.extendFiles(defineConfig(ts.configs.ts, reactTsRoot), ['**/*.tsx']);
+const reactTs = defineConfig(
+    ts.utils.extendFiles(reactEs.configs.reactEsNext, ['**/*.tsx']),
+    ts.utils.extendFiles(ts.configs.tsRoot, ts.patterns.tsFilter),
+    ts.utils.extendFiles([reactTsBase], ['**/*.tsx'])
+);
 
 export default {
     ...ts,

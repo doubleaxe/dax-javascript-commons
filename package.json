@@ -20,7 +20,7 @@
   "devDependencies": {
     "@doubleaxe/eslint-config": "workspace:^",
     "@doubleaxe/prettier-config": "workspace:^",
-    "eslint": "^9.33.0",
+    "eslint": "^9.35.0",
     "prettier": "^3.6.2"
   }
 }

@@ -24,7 +24,13 @@ const rules = {
         'error',
         {
             selector: 'default',
-            format: ['camelCase'],
+            format: ['camelCase', 'PascalCase'],
+            leadingUnderscore: 'allowSingleOrDouble',
+            trailingUnderscore: 'allowSingleOrDouble',
+        },
+        {
+            selector: 'variable',
+            format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
             leadingUnderscore: 'allowSingleOrDouble',
             trailingUnderscore: 'allowSingleOrDouble',
         },
@@ -34,13 +40,18 @@ const rules = {
         },
         {
             selector: 'variable',
-            format: ['camelCase', 'UPPER_CASE'],
-            leadingUnderscore: 'allowSingleOrDouble',
-            trailingUnderscore: 'allowSingleOrDouble',
+            modifiers: ['destructured'],
+            format: null,
+        },
+        {
+            selector: 'parameter',
+            modifiers: ['destructured'],
+            format: null,
         },
         {
             selector: 'typeLike',
             format: ['PascalCase'],
+            leadingUnderscore: 'allowSingleOrDouble',
             trailingUnderscore: 'allowSingleOrDouble',
         },
     ],

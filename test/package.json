@@ -3,14 +3,22 @@
   "version": "1.0.0",
   "description": "",
   "license": "MIT",
+  "scripts": {
+    "inspect-config": "eslint --inspect-config",
+    "prettier-check": "eslint-config-prettier ./file-react.tsx && eslint-config-prettier ./file-vue.vue"
+  },
   "dependencies": {
     "@doubleaxe/eslint-config": "workspace:^",
     "@doubleaxe/typescript-config": "workspace:^",
-    "eslint": "^9.33.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.36.0"
+    "eslint-plugin-vue": "^10.4.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.43.0",
+    "vue": "^3.5.21",
+    "vue-eslint-parser": "^10.2.0"
   }
 }

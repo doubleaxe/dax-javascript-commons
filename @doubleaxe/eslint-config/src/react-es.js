@@ -23,6 +23,7 @@ const rules = {
         },
     ],
     'react/button-has-type': ['error'],
+    'react/forward-ref-uses-ref': ['error'],
     'react/function-component-definition': ['error'],
     'react/hook-use-state': ['error'],
     'react/jsx-boolean-value': ['error'],
@@ -37,6 +38,7 @@ const rules = {
     'react/jsx-handler-names': ['error'],
     'react/jsx-no-constructed-context-values': ['error'],
     'react/jsx-no-script-url': ['error'],
+    'react/jsx-no-useless-fragment': ['error'],
     'react/jsx-pascal-case': ['error'],
     'react/jsx-sort-props': ['error'],
     'react/no-access-state-in-setstate': ['error'],
@@ -61,13 +63,20 @@ const reactEsNextBase = {
 };
 
 const reactEsNextRoot = defineConfig(
-    reactPlugin.configs.flat.recommended,
-    reactPlugin.configs.flat['jsx-runtime'],
+    {
+        ...reactPlugin.configs.flat.recommended,
+        name: 'react/recommended',
+    },
+    {
+        ...reactPlugin.configs.flat['jsx-runtime'],
+        name: 'react/jsx-runtime',
+    },
     hooks.configs['recommended-latest'],
+    es.configs.browser,
     reactEsNextBase
 );
 
-const reactEsNext = es.utils.extendFiles(defineConfig(es.configs.esNext, reactEsNextRoot), ['**/*.jsx']);
+const reactEsNext = defineConfig(es.configs.esNext, es.utils.extendFiles(reactEsNextRoot, ['**/*.jsx']));
 
 export default {
     ...es,
