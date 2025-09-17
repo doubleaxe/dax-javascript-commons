@@ -87,8 +87,10 @@ const vueEsNextRoot = defineConfig(
     vueEsNextBase
 );
 
-const vueEsNext = es.utils.extendFiles(defineConfig(es.configs.esNext, vueEsNextRoot), es.patterns.vueFilter);
-
+const vueEsNext = defineConfig(
+    es.utils.extendFiles([...es.configs.esNext, ...vueEsNextRoot], es.patterns.vueFilter),
+    es.configs.browser
+);
 export default {
     ...es,
     baseConfigs: {

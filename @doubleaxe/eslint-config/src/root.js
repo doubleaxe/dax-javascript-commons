@@ -31,10 +31,16 @@ const tools = [
 const toolsEs = tools.map((tool) => `**/${tool}.{js,mjs}`);
 const toolsTs = tools.map((tool) => `**/${tool}.{ts,mts}`);
 
-const esExtensions = ['js', 'mjs', 'jsx'];
+const jsxExtensions = ['jsx'];
+const jsxFilter = jsxExtensions.map((ext) => `**/*.${ext}`);
+
+const esExtensions = ['js', 'mjs', ...jsxExtensions];
 const esFilter = esExtensions.map((ext) => `**/*.${ext}`);
 
-const tsExtensions = ['ts', 'mts', 'tsx'];
+const tsxExtensions = ['tsx'];
+const tsxFilter = tsxExtensions.map((ext) => `**/*.${ext}`);
+
+const tsExtensions = ['ts', 'mts', ...tsxExtensions];
 const tsFilter = tsExtensions.map((ext) => `**/*.${ext}`);
 
 const vueExtensions = ['vue'];
@@ -112,9 +118,13 @@ export default {
         toolsTs,
         esExtensions,
         tsExtensions,
+        jsxExtensions,
+        tsxExtensions,
         vueExtensions,
         esFilter,
         tsFilter,
+        jsxFilter,
+        tsxFilter,
         vueFilter,
     },
     utils,

@@ -72,11 +72,14 @@ const reactEsNextRoot = defineConfig(
         name: 'react/jsx-runtime',
     },
     hooks.configs['recommended-latest'],
-    es.configs.browser,
     reactEsNextBase
 );
 
-const reactEsNext = defineConfig(es.configs.esNext, es.utils.extendFiles(reactEsNextRoot, ['**/*.jsx']));
+const reactEsNext = defineConfig(
+    es.configs.esNext,
+    es.utils.extendFiles(reactEsNextRoot, es.patterns.jsxFilter),
+    es.configs.browser
+);
 
 export default {
     ...es,

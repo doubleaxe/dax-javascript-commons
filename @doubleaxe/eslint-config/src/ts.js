@@ -123,7 +123,7 @@ const tsBase = {
     languageOptions: {
         parser: tseslint.parser,
         parserOptions: {
-            project: true,
+            projectService: true,
             //see https://github.com/vuejs/eslint-plugin-vue/issues/2428
             //see https://github.com/typescript-eslint/typescript-eslint/issues/6778
             extraFileExtensions: ['.vue'],
@@ -145,7 +145,10 @@ const tsRoot = defineConfig(
 
 const ts = es.utils.extendFiles(defineConfig(es.configs.esNext, tsRoot), es.patterns.tsFilter);
 
-const tsTools = es.utils.extendFiles(defineConfig(es.configs.esNext, tsRoot, es.configs.node), es.patterns.toolsTs);
+const tsTools = es.utils.extendFiles(
+    defineConfig(es.configs.esNextTools, tsRoot, es.configs.node),
+    es.patterns.toolsTs
+);
 
 export default {
     ...es,
