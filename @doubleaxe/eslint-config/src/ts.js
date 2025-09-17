@@ -29,13 +29,16 @@ const rules = {
             trailingUnderscore: 'allowSingleOrDouble',
         },
         {
-            selector: 'variable',
-            format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
-            leadingUnderscore: 'allowSingleOrDouble',
-            trailingUnderscore: 'allowSingleOrDouble',
+            selector: 'import',
+            format: null,
         },
         {
-            selector: 'import',
+            selector: 'property',
+            format: null,
+        },
+        {
+            selector: 'variable',
+            modifiers: ['global'],
             format: null,
         },
         {
