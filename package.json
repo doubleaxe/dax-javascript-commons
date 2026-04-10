@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
-  "packageManager": "pnpm@10.14.0",
+  "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22"
   },
@@ -19,7 +19,8 @@
   "devDependencies": {
     "@doubleaxe/eslint-config": "workspace:^",
     "@doubleaxe/prettier-config": "workspace:^",
-    "eslint": "^9.35.0",
-    "prettier": "^3.6.2"
+    "@open-pioneer/check-pnpm-duplicates": "^0.3.1",
+    "eslint": "catalog:",
+    "prettier": "catalog:"
   }
 }

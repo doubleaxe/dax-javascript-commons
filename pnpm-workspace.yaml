@@ -3,3 +3,9 @@ packages:
   - '@doubleaxe/prettier-config'
   - '@doubleaxe/typescript-config'
   - 'test'
+allowBuilds:
+  esbuild: true
+catalog:
+  eslint: ^9.39.4
+  prettier: ^3.8.2
+  typescript: ^6.0.2

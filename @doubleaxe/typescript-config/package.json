@@ -1,6 +1,6 @@
 {
   "name": "@doubleaxe/typescript-config",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Preferred typescript config for my projects.",
   "keywords": [
     "typescript"
@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "tslib": "^2.8.1",
-    "typescript": "^5.9.2"
+    "typescript": "catalog:"
   },
   "peerDependenciesMeta": {
     "tslib": {
