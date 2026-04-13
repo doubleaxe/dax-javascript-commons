@@ -8,18 +8,9 @@ import globals from 'globals';
 import browser from './browser.js';
 import node from './node.js';
 import root from './root.js';
+import type { EslintConfig, EslintPlugin, EslintRules, EslintSharedConfigs } from './types.js';
 
-/**
- * @typedef EslintConfig
- * @type {import("eslint").Linter.Config}
- */
-/**
- * @typedef EslintRules
- * @type {import("eslint").Linter.RulesRecord}
- */
-
-/** @type {EslintRules} */
-const rules = {
+const rules: EslintRules = {
     'array-callback-return': [
         'error',
         {
@@ -48,6 +39,7 @@ const rules = {
     ],
     'eqeqeq': ['error'],
     'grouped-accessor-pairs': ['error'],
+    'guard-for-in': ['error'],
     'no-alert': ['warn'],
     'no-array-constructor': ['error'],
     'no-caller': ['error'],
@@ -78,7 +70,6 @@ const rules = {
     'no-lonely-if': ['error'],
     'no-loop-func': ['error'],
     'no-multi-assign': ['error'],
-    'no-multi-str': ['error'],
     'no-nested-ternary': ['error'],
     'no-new': ['error'],
     'no-new-func': ['error'],
@@ -215,14 +206,12 @@ const rules = {
     'yoda': ['error'],
 };
 
-/** @type {EslintConfig} */
-const esNextBase = {
+const esNextBase: EslintConfig = {
     name: 'doubleaxe/esNext',
     rules: {
         ...rules,
 
         // only rules that don't require resolution (resolution is slow, complex to setup and buggy)
-        'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
         'import/no-absolute-path': ['error'],
         'import/no-commonjs': ['error'],
         'import/no-duplicates': ['error'],
@@ -264,7 +253,7 @@ const esNextBase = {
     settings: {},
 };
 
-const esRecommended = { ...js.configs.recommended, name: 'eslint/recommended' };
+const esRecommended: EslintConfig = { ...js.configs.recommended, name: 'eslint/recommended' };
 const esNextRoot = defineConfig(root.configs.root, esRecommended, esNextBase);
 
 const esNext = root.utils.extendFiles(esNextRoot, root.patterns.esFilter);
@@ -277,6 +266,7 @@ export default {
         ...root.baseConfigs,
         ...browser.baseConfigs,
         ...node.baseConfigs,
+        esRecommended,
         esNextBase,
     },
     configs: {
@@ -291,8 +281,9 @@ export default {
         ...root.plugins,
         ...browser.plugins,
         ...node.plugins,
-        'import': root.utils.inferPlugin(importPlugin),
-        'perfectionist': root.utils.inferPlugin(perfectionist),
-        'simple-import-sort': root.utils.inferPlugin(simpleImportSortPlugin),
+        'import': importPlugin as EslintPlugin,
+        'perfectionist': perfectionist as EslintPlugin,
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        'simple-import-sort': simpleImportSortPlugin as EslintPlugin,
     },
-};
+} satisfies EslintSharedConfigs;

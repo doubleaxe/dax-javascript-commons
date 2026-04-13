@@ -3,23 +3,14 @@ import reactPlugin from 'eslint-plugin-react';
 
 import reactEs from './react-es.js';
 import ts from './ts.js';
+import type { EslintConfig, EslintRules, EslintSharedConfigs } from './types.js';
 
-/**
- * @typedef EslintConfig
- * @type {import("eslint").Linter.Config}
- */
-/**
- * @typedef EslintRules
- * @type {import("eslint").Linter.RulesRecord}
- */
-
-/** @type {EslintRules} */
-const rules = {
+const rules: EslintRules = {
     'react/boolean-prop-naming': 'error',
 };
 
 /** @type {EslintConfig} */
-const reactTsBase = {
+const reactTsBase: EslintConfig = {
     name: 'doubleaxe/react/ts',
     plugins: { react: reactPlugin },
     rules,
@@ -41,7 +32,7 @@ export default {
         reactTsBase,
     },
     configs: {
-        ...reactEs.baseConfigs,
+        ...reactEs.configs,
         ...ts.configs,
         reactTsRoot,
         reactTs,
@@ -50,4 +41,4 @@ export default {
         ...ts.plugins,
         ...reactEs.plugins,
     },
-};
+} satisfies EslintSharedConfigs;

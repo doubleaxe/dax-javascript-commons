@@ -4,18 +4,9 @@ import hooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 import es from './es.js';
+import type { EslintConfig, EslintPlugin, EslintRules, EslintSharedConfigs } from './types.js';
 
-/**
- * @typedef EslintConfig
- * @type {import("eslint").Linter.Config}
- */
-/**
- * @typedef EslintRules
- * @type {import("eslint").Linter.RulesRecord}
- */
-
-/** @type {EslintRules} */
-const rules = {
+const rules: EslintRules = {
     'react-refresh/only-export-components': [
         'warn',
         {
@@ -50,8 +41,7 @@ const rules = {
     'react/style-prop-object': ['error'],
 };
 
-/** @type {EslintConfig} */
-const reactEsNextBase = {
+const reactEsNextBase: EslintConfig = {
     name: 'doubleaxe/react/esNext',
     plugins: { 'react': reactPlugin, 'react-refresh': reactRefresh },
     rules,
@@ -64,14 +54,14 @@ const reactEsNextBase = {
 
 const reactEsNextRoot = defineConfig(
     {
-        ...reactPlugin.configs.flat.recommended,
+        ...reactPlugin.configs.flat['recommended'],
         name: 'react/recommended',
     },
     {
         ...reactPlugin.configs.flat['jsx-runtime'],
         name: 'react/jsx-runtime',
     },
-    hooks.configs['recommended-latest'],
+    hooks.configs.flat['recommended-latest'] as EslintConfig,
     reactEsNextBase
 );
 
@@ -94,7 +84,7 @@ export default {
     },
     plugins: {
         ...es.plugins,
-        'react': es.utils.inferPlugin(reactPlugin),
-        'react-refresh': es.utils.inferPlugin(reactRefresh),
+        'react': reactPlugin as EslintPlugin,
+        'react-refresh': reactRefresh as EslintPlugin,
     },
-};
+} satisfies EslintSharedConfigs;

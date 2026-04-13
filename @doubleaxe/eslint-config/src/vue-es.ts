@@ -3,18 +3,9 @@ import pluginVue from 'eslint-plugin-vue';
 import parserVue from 'vue-eslint-parser';
 
 import es from './es.js';
+import type { EslintConfig, EslintPlugin, EslintRules, EslintSharedConfigs } from './types.js';
 
-/**
- * @typedef EslintConfig
- * @type {import("eslint").Linter.Config}
- */
-/**
- * @typedef EslintRules
- * @type {import("eslint").Linter.RulesRecord}
- */
-
-/** @type {EslintRules} */
-const extensionRules = {
+const extensionRules: EslintRules = {
     'vue/camelcase': [
         'error',
         {
@@ -37,8 +28,7 @@ const extensionRules = {
     'vue/prefer-template': ['error'],
 };
 
-/** @type {EslintRules} */
-const rules = {
+const rules: EslintRules = {
     'vue/component-name-in-template-casing': [
         'error',
         'PascalCase',
@@ -67,8 +57,7 @@ const rules = {
     'vue/slot-name-casing': ['error'],
 };
 
-/** @type {EslintConfig} */
-const vueEsNextBase = {
+const vueEsNextBase: EslintConfig = {
     name: 'doubleaxe/vue3/esNext',
     plugins: { vue: pluginVue },
     rules: { ...rules, ...extensionRules },
@@ -104,6 +93,6 @@ export default {
     },
     plugins: {
         ...es.plugins,
-        vue: es.utils.inferPlugin(pluginVue),
+        vue: pluginVue as EslintPlugin,
     },
-};
+} satisfies EslintSharedConfigs;

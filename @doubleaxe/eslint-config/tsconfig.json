@@ -1,17 +1,14 @@
 {
+  "extends": "@doubleaxe/typescript-config/node.json",
   "compilerOptions": {
+    "types": [],
     "rootDir": "./src",
-    "outDir": "./types",
-    "allowJs": true,
-    "checkJs": true,
+    "outDir": "./dist",
+    "sourceMap": false,
+    "declarationDir": "./types",
     "declaration": true,
-    "emitDeclarationOnly": true,
-    "noEmitOnError": false,
-    "module": "nodenext",
-    "target": "esnext",
-    "esModuleInterop": true,
-    "skipLibCheck": true
+    "declarationMap": false
   },
-  "include": ["src/**/*.js"],
+  "include": ["src/**/*.ts"],
   "exclude": ["**/node_modules/**", "**/*.d.ts"]
 }

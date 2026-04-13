@@ -4,27 +4,17 @@ import tseslint from 'typescript-eslint';
 import parserVue from 'vue-eslint-parser';
 
 import ts from './ts.js';
+import type { EslintConfig, EslintRules, EslintSharedConfigs } from './types.js';
 import vueEs from './vue-es.js';
 
-/**
- * @typedef EslintConfig
- * @type {import("eslint").Linter.Config}
- */
-/**
- * @typedef EslintRules
- * @type {import("eslint").Linter.RulesRecord}
- */
-
-/** @type {EslintRules} */
-const rules = {
+const rules: EslintRules = {
     'vue/camelcase': ['off'],
     'vue/define-emits-declaration': ['error'],
     'vue/define-props-declaration': ['error'],
     'vue/require-typed-ref': ['error'],
 };
 
-/** @type {EslintConfig} */
-const vueTsBase = {
+const vueTsBase: EslintConfig = {
     name: 'doubleaxe/vue3/ts',
     plugins: { vue: pluginVue },
     rules,
@@ -56,4 +46,4 @@ export default {
         ...ts.plugins,
         ...vueEs.plugins,
     },
-};
+} satisfies EslintSharedConfigs;

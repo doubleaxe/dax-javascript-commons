@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "inspect-config": "eslint --inspect-config",
+    "inspector": "config-inspector",
     "prettier-check-tsx": "eslint-config-prettier ./file-react.tsx",
     "prettier-check-vue": "eslint-config-prettier ./file-vue.vue",
     "prettier-check": "run-s prettier-check-tsx prettier-check-vue",
@@ -14,6 +15,7 @@
     "@doubleaxe/eslint-config": "workspace:^",
     "@doubleaxe/typescript-config": "workspace:^",
     "@eslint/config-inspector": "^1.5.0",
+    "@types/react": "^19.2.14",
     "eslint": "catalog:",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",

@@ -1,3 +1,7 @@
-import es from '@doubleaxe/eslint-config/es';
+import es from '@doubleaxe/eslint-config/ts';
+import { defineConfig } from 'eslint/config';
 
-export default [...es.configs.esNext, ...es.configs.node];
+const config = defineConfig(...es.configs.ts, ...es.configs.node, {
+    ignores: ['test', '@doubleaxe/eslint-config/types', '@doubleaxe/eslint-config/dist'],
+});
+export default config;

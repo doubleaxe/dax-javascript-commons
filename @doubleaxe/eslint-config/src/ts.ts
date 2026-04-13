@@ -2,23 +2,24 @@ import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 import es from './es.js';
-
-/**
- * @typedef EslintConfig
- * @type {import("eslint").Linter.Config}
- */
-/**
- * @typedef EslintRules
- * @type {import("eslint").Linter.RulesRecord}
- */
+import type { EslintConfig, EslintPlugin, EslintRules, EslintSharedConfigs } from './types.js';
 
 // typescript recommended are much better
-/** @type {EslintRules} */
-const rules = {
+const rules: EslintRules = {
     '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
     '@typescript-eslint/consistent-type-imports': ['error'],
     '@typescript-eslint/consistent-type-exports': ['error'],
     '@typescript-eslint/default-param-last': ['error'],
+    '@typescript-eslint/dot-notation': [
+        'error',
+        {
+            allowKeywords: true,
+            allowIndexSignaturePropertyAccess: false,
+            allowPattern: '',
+            allowPrivateClassPropertyAccess: false,
+            allowProtectedClassPropertyAccess: false,
+        },
+    ],
     '@typescript-eslint/method-signature-style': ['error'],
     '@typescript-eslint/naming-convention': [
         'error',
@@ -81,6 +82,7 @@ const rules = {
             enforceForJSX: false,
         },
     ],
+    '@typescript-eslint/no-unused-private-class-members': ['error'],
     '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -103,21 +105,23 @@ const rules = {
     ],
     '@typescript-eslint/no-useless-constructor': ['error'],
     '@typescript-eslint/prefer-reduce-type-parameter': ['error'],
+    '@typescript-eslint/return-await': ['error', 'always'],
     '@typescript-eslint/unified-signatures': ['error'],
 
     'camelcase': ['off'],
     'default-param-last': ['off'],
+    'dot-notation': ['off'],
     'no-loop-func': ['off'],
     'no-shadow': ['off'],
     'no-throw-literal': ['off'],
     'no-unused-expressions': ['off'],
+    'no-unused-private-class-members': ['off'],
     'no-unused-vars': ['off'],
     'no-use-before-define': ['off'],
     'no-useless-constructor': ['off'],
 };
 
-/** @type {EslintConfig} */
-const tsBase = {
+const tsBase: EslintConfig = {
     name: 'doubleaxe/ts',
     rules,
     plugins: {
@@ -142,7 +146,7 @@ const tsBase = {
 const tsRoot = defineConfig(
     tseslint.configs.recommendedTypeChecked,
     // without duplicate base configs
-    tseslint.configs.stylisticTypeChecked[tseslint.configs.stylisticTypeChecked.length - 1],
+    tseslint.configs.stylisticTypeChecked[tseslint.configs.stylisticTypeChecked.length - 1]!,
     tsBase
 );
 
@@ -167,6 +171,6 @@ export default {
     },
     plugins: {
         ...es.plugins,
-        '@typescript-eslint': es.utils.inferPlugin(tseslint.plugin),
+        '@typescript-eslint': tseslint.plugin as EslintPlugin,
     },
-};
+} satisfies EslintSharedConfigs;

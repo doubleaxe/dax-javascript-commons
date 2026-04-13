@@ -3,18 +3,9 @@ import nodePlugin from 'eslint-plugin-n';
 import pluginSecurity from 'eslint-plugin-security';
 import globals from 'globals';
 
-import root from './root.js';
+import type { EslintConfig, EslintPlugin, EslintSimpleSharedConfig } from './types.js';
 
-/**
- * @typedef EslintConfig
- * @type {import("eslint").Linter.Config}
- */
-/**
- * @typedef EslintRules
- * @type {import("eslint").Linter.RulesRecord}
- */
-
-const node = defineConfig(pluginSecurity.configs.recommended, {
+const node = defineConfig(pluginSecurity.configs.recommended as EslintConfig, {
     name: 'doubleaxe/node',
     rules: {
         // we don't use recommended here, because it overlap eslint-plugin-import
@@ -43,6 +34,6 @@ export default {
         node,
     },
     plugins: {
-        n: root.utils.inferPlugin(nodePlugin),
+        n: nodePlugin as EslintPlugin,
     },
-};
+} satisfies EslintSimpleSharedConfig;

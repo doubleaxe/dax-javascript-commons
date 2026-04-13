@@ -14,42 +14,44 @@
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
   "type": "module",
-  "main": "./src/index.js",
+  "main": "./dist/index.js",
   "types": "./types/index.d.ts",
   "exports": {
     ".": {
       "types": "./types/index.d.ts",
-      "default": "./src/index.js"
+      "default": "./dist/index.js"
     },
     "./es": {
       "types": "./types/es.d.ts",
-      "default": "./src/es.js"
+      "default": "./dist/es.js"
     },
     "./ts": {
       "types": "./types/ts.d.ts",
-      "default": "./src/ts.js"
+      "default": "./dist/ts.js"
     },
     "./react-es": {
       "types": "./types/react-es.d.ts",
-      "default": "./src/react-es.js"
+      "default": "./dist/react-es.js"
     },
     "./react-ts": {
       "types": "./types/react-ts.d.ts",
-      "default": "./src/react-ts.js"
+      "default": "./dist/react-ts.js"
     },
     "./vue-es": {
       "types": "./types/vue-es.d.ts",
-      "default": "./src/vue-es.js"
+      "default": "./dist/vue-es.js"
     },
     "./vue-ts": {
       "types": "./types/vue-ts.d.ts",
-      "default": "./src/vue-ts.js"
+      "default": "./dist/vue-ts.js"
     }
   },
   "scripts": {
-    "clean": "rimraf ./types",
+    "clean": "rimraf ./types ./dist",
     "build": "tsc",
+    "watch": "tsc --watch",
     "clean-build": "run-s clean build",
+    "clean-watch": "run-s clean watch",
     "prepack": "run-s clean-build",
     "pack": "pnpm pack --pack-destination ../../dist"
   },
@@ -92,6 +94,8 @@
     }
   },
   "devDependencies": {
+    "@doubleaxe/typescript-config": "workspace:^",
+    "@types/eslint-plugin-security": "^3.0.1",
     "eslint": "catalog:",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
