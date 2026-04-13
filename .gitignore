@@ -5,3 +5,4 @@ dist
 *.bak
 tmp
 @doubleaxe/eslint-config/types
+.npmrc
