@@ -13,6 +13,9 @@
     "type": "git",
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "files": [
     "dist",
@@ -51,6 +54,9 @@
     }
   },
   "scripts": {
+    "lint": "eslint --fix .",
+    "format": "prettier --write .",
+    "check": "tsc --noEmit",
     "clean": "rimraf ./types ./dist",
     "build": "tsc",
     "watch": "tsc --watch",

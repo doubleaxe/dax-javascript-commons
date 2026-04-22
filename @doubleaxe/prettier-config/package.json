@@ -12,8 +12,13 @@
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
   "main": "index.js",
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "scripts": {
+    "lint": "eslint --fix .",
+    "format": "prettier --write .",
     "pack": "pnpm pack --pack-destination ../../dist"
   },
   "peerDependencies": {

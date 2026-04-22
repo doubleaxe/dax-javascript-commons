@@ -6,3 +6,4 @@ dist
 tmp
 @doubleaxe/eslint-config/types
 .npmrc
+.codex

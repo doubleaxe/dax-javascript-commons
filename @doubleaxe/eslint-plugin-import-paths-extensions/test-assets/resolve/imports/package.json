@@ -1,0 +1,7 @@
+{
+  "name": "imports-proj",
+  "type": "module",
+  "imports": {
+    "#core": "./src/core/index.ts"
+  }
+}

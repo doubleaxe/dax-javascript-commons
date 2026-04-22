@@ -1,0 +1,55 @@
+{
+  "name": "@doubleaxe/eslint-plugin-import-paths-extensions",
+  "version": "1.0.0",
+  "description": "Eslint plugin to handle import paths converting to/from aliases and adding extensions.",
+  "keywords": [
+    "eslint",
+    "eslint-plugin"
+  ],
+  "author": "Alexey Usov (dax@xdax.ru, https://github.com/doubleaxe)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doubleaxe/dax-javascript-commons"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "files": [
+    "dist",
+    "types"
+  ],
+  "main": "./dist/index.js",
+  "types": "./types/index.d.ts",
+  "scripts": {
+    "lint": "eslint --fix .",
+    "format": "prettier --write .",
+    "check": "tsc --noEmit",
+    "clean": "rimraf ./types ./dist",
+    "build": "tsc",
+    "test": "vitest run",
+    "watch": "tsc --watch",
+    "clean-build": "run-s clean build",
+    "clean-watch": "run-s clean watch",
+    "prepack": "run-s clean-build",
+    "pack": "pnpm pack --pack-destination ../../dist"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^8.59.0",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "peerDependencies": {
+    "eslint": "9.x"
+  },
+  "peerDependenciesMeta": {},
+  "devDependencies": {
+    "@doubleaxe/typescript-config": "workspace:^",
+    "@types/node": "^22.19.17",
+    "eslint": "catalog:",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^6.1.3",
+    "typescript": "catalog:",
+    "vitest": "^4.1.5"
+  }
+}

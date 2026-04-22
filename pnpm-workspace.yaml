@@ -1,5 +1,6 @@
 packages:
   - '@doubleaxe/eslint-config'
+  - '@doubleaxe/eslint-plugin-import-paths-extensions'
   - '@doubleaxe/prettier-config'
   - '@doubleaxe/typescript-config'
   - 'test'
