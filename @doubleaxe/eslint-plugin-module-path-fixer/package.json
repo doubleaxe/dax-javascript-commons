@@ -1,10 +1,13 @@
 {
-  "name": "@doubleaxe/eslint-plugin-import-paths-extensions",
+  "name": "@doubleaxe/eslint-plugin-module-path-fixer",
   "version": "1.0.0",
-  "description": "Eslint plugin to handle import paths converting to/from aliases and adding extensions.",
+  "description": "SLint plugin for the standardized transformation of module specifiers. Enforces consistency between aliased and relative path formats and manages mandatory or prohibited file extensions across ESM and CommonJS modules.",
   "keywords": [
     "eslint",
-    "eslint-plugin"
+    "eslint-plugin",
+    "module-resolution",
+    "path-normalization",
+    "alias-resolution"
   ],
   "author": "Alexey Usov (dax@xdax.ru, https://github.com/doubleaxe)",
   "license": "MIT",

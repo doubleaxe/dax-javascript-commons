@@ -1,6 +1,6 @@
 packages:
   - '@doubleaxe/eslint-config'
-  - '@doubleaxe/eslint-plugin-import-paths-extensions'
+  - '@doubleaxe/eslint-plugin-module-path-fixer'
   - '@doubleaxe/prettier-config'
   - '@doubleaxe/typescript-config'
   - 'test'
