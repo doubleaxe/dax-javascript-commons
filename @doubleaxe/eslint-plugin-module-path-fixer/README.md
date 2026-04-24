@@ -25,6 +25,15 @@ All rule options are optional. Both rules apply internal defaults when options a
     - `import x = require('x')`
 - Ignores unresolved and non-static specifiers.
 
+## Installation
+
+Requires eslint 9.x
+
+```
+npm install @doubleaxe/eslint-plugin-module-path-fixer -D
+pnpm add @doubleaxe/eslint-plugin-module-path-fixer -D
+```
+
 ## Global Settings
 
 Use `settings['module-path-fixer']`:

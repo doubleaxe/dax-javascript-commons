@@ -1,6 +1,6 @@
 {
   "name": "@doubleaxe/eslint-plugin-module-path-fixer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ESLint plugin for the standardized transformation of module specifiers. Enforces consistency between aliased and relative path formats and manages mandatory or prohibited file extensions across ESM and CommonJS modules.",
   "keywords": [
     "eslint",
