@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createImportResolver } from '../src/resolve.js';
 
 const tempRoots: string[] = [];
-const fixturesRoot = path.resolve(process.cwd(), 'test-assets/resolve');
+const fixturesRoot = path.resolve(process.cwd(), 'test-assets');
 
 function mkTempRoot(): string {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'resolve-test-'));

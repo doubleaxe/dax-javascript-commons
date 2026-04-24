@@ -510,10 +510,7 @@ export class ImportResolver {
             : normalizePath(path.resolve(process.cwd(), manualBaseUrl));
     }
 
-    private getManualAliasMatchPath(
-        baseUrl: string,
-        paths: Readonly<Record<string, readonly string[]>>
-    ): MatchPath {
+    private getManualAliasMatchPath(baseUrl: string, paths: Readonly<Record<string, readonly string[]>>): MatchPath {
         const cacheKey = serializeManualTsConfigs([{ baseUrl, paths }]);
         const cached = ImportResolver.manualAliasMatchPathCache.get(cacheKey);
         if (cached) {
