@@ -153,7 +153,7 @@ export class ExtensionsCore {
     private readonly options: NormalizedCoreOptions;
     private readonly resolver: ResolverLike;
 
-    public constructor(options: ExtensionsCoreOptions, resolver?: ResolverLike) {
+    public constructor(options: ExtensionsCoreOptions = {}, resolver?: ResolverLike) {
         this.options = {
             extension: normalizeMode(options.extension, 'never'),
             index: normalizeMode(options.index, 'never'),
@@ -254,6 +254,6 @@ export class ExtensionsCore {
     }
 }
 
-export function createExtensionsCore(options: ExtensionsCoreOptions, resolver?: ResolverLike): ExtensionsCore {
+export function createExtensionsCore(options: ExtensionsCoreOptions = {}, resolver?: ResolverLike): ExtensionsCore {
     return new ExtensionsCore(options, resolver);
 }

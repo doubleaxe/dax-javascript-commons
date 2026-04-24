@@ -23,14 +23,9 @@ type Options = [ExtensionsRuleOptions?];
 
 type MessageIds = 'extensions';
 
-function isMode(value: unknown): value is ExtensionsMode {
-    return value === 'always' || value === 'never';
-}
-
 const schema: JSONSchema4 = {
     type: 'object',
     additionalProperties: false,
-    required: ['extension', 'index'],
     properties: {
         extension: {
             type: 'string',
@@ -86,10 +81,6 @@ export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
 
         const settings = parseModulePathFixerSettings(context.settings);
         const ruleOptions = context.options[0] ?? {};
-
-        if (!isMode(ruleOptions.extension) || !isMode(ruleOptions.index)) {
-            return {};
-        }
 
         const core = createExtensionsCore({
             extension: ruleOptions.extension,

@@ -4,10 +4,10 @@ export type ExtensionsMode = 'always' | 'never';
 
 export type ExtensionsCoreOptions = {
     caseInsensitive?: boolean;
-    extension: ExtensionsMode;
+    extension?: ExtensionsMode;
     extensionMapping?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
-    index: ExtensionsMode;
+    index?: ExtensionsMode;
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     usePackageJson?: boolean;
     useTsConfig?: boolean;

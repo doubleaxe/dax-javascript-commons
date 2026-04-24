@@ -15,6 +15,7 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . --fix",
+    "format": "prettier --write .",
     "pack-all": "pnpm run -r pack"
   },
   "devDependencies": {
