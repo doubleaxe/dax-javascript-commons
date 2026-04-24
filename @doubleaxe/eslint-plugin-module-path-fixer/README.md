@@ -1,4 +1,4 @@
-# @doubleaxe/eslint-plugin-module-path-fixer
+# [@doubleaxe/eslint-plugin-module-path-fixer](https://github.com/doubleaxe/dax-javascript-commons/tree/main/%40doubleaxe/eslint-plugin-module-path-fixer)
 
 ESLint plugin for deterministic module specifier normalization.
 
