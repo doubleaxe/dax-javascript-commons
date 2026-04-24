@@ -1,24 +1,29 @@
 import type { ManualTsConfigEntry, ResolvedImport, ResolveImportOptions } from '../../resolve.js';
 
-export type PreferAliasOrRelativeCoreOptions = {
+export type ExtensionsMode = 'always' | 'never';
+
+export type ExtensionsCoreOptions = {
     caseInsensitive?: boolean;
-    depth?: number;
+    extension: ExtensionsMode;
+    extensionMapping?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
+    index: ExtensionsMode;
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };
 
-export type PreferAliasOrRelativeInput = {
+export type ExtensionsInput = {
     importerFile: string;
     specifier: string;
 };
 
-export type PreferAliasOrRelativeDecisionKind = 'to-alias' | 'to-relative';
+export type ExtensionsDecisionReason = 'extension-and-index' | 'extension' | 'index';
 
-export type PreferAliasOrRelativeDecision = {
-    kind: PreferAliasOrRelativeDecisionKind;
+export type ExtensionsDecision = {
+    kind: 'rewrite';
     nextSpecifier: string;
+    reason: ExtensionsDecisionReason;
     resolved: ResolvedImport;
 };
 

@@ -2,7 +2,8 @@ import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type { JSONSchema4 } from '@typescript-eslint/utils/json-schema';
 
 import type { ManualTsConfigEntry } from './resolve.js';
-import { createPreferAliasOrRelativeCore } from './rules/prefer-alias-or-relative/index.js';
+import type { ExtensionsMode } from './rules/extensions/index.js';
+import { createExtensionsCore } from './rules/extensions/index.js';
 import {
     buildFixedLiteral,
     getImportEqualsLiteral,
@@ -11,20 +12,34 @@ import {
     parseModulePathFixerSettings,
 } from './util.js';
 
-type PreferAliasOrRelativeRuleOptions = {
+type ExtensionsRuleOptions = {
     alias?: readonly ManualTsConfigEntry[];
-    depth?: number;
+    extension?: ExtensionsMode;
+    extensionMapping?: Readonly<Record<string, string>>;
+    index?: ExtensionsMode;
 };
 
-type Options = [PreferAliasOrRelativeRuleOptions?];
+type Options = [ExtensionsRuleOptions?];
 
-type MessageIds = 'preferAliasOrRelative';
+type MessageIds = 'extensions';
+
+function isMode(value: unknown): value is ExtensionsMode {
+    return value === 'always' || value === 'never';
+}
 
 const schema: JSONSchema4 = {
     type: 'object',
     additionalProperties: false,
+    required: ['extension', 'index'],
     properties: {
-        depth: { type: 'integer' },
+        extension: {
+            type: 'string',
+            enum: ['always', 'never'],
+        },
+        index: {
+            type: 'string',
+            enum: ['always', 'never'],
+        },
         alias: {
             type: 'array',
             items: {
@@ -43,19 +58,23 @@ const schema: JSONSchema4 = {
                 },
             },
         },
+        extensionMapping: {
+            type: 'object',
+            additionalProperties: { type: 'string' },
+        },
     },
 };
 
-export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options> = {
+export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
     meta: {
         type: 'suggestion',
         docs: {
-            description: 'Normalize import specifiers between alias and relative forms by traversal depth.',
+            description: 'Resolve import targets and enforce configured extension and directory index specifier style.',
         },
         fixable: 'code',
         schema: [schema],
         messages: {
-            preferAliasOrRelative: 'Prefer "{{nextSpecifier}}" instead of "{{currentSpecifier}}".',
+            extensions: 'Prefer "{{nextSpecifier}}" instead of "{{currentSpecifier}}".',
         },
     },
     defaultOptions: [{}],
@@ -68,8 +87,14 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
         const settings = parseModulePathFixerSettings(context.settings);
         const ruleOptions = context.options[0] ?? {};
 
-        const core = createPreferAliasOrRelativeCore({
-            depth: ruleOptions.depth,
+        if (!isMode(ruleOptions.extension) || !isMode(ruleOptions.index)) {
+            return {};
+        }
+
+        const core = createExtensionsCore({
+            extension: ruleOptions.extension,
+            index: ruleOptions.index,
+            extensionMapping: ruleOptions.extensionMapping,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
             caseInsensitive: settings.caseInsensitive,
@@ -94,7 +119,7 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
 
             context.report({
                 node: literalNode,
-                messageId: 'preferAliasOrRelative',
+                messageId: 'extensions',
                 data: {
                     currentSpecifier,
                     nextSpecifier: decision.nextSpecifier,
@@ -148,4 +173,4 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
     },
 };
 
-export default preferAliasOrRelativeRule;
+export default extensionsRule;

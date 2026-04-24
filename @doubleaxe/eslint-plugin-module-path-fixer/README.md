@@ -2,20 +2,16 @@
 
 ESLint plugin for deterministic module specifier normalization.
 
-The library resolves real import targets and safely rewrites only when resolution stays semantically equivalent. It is designed for mixed setups with:
+The plugin resolves real import targets and applies autofixes only when target resolution remains semantically equivalent. It is built for projects that combine:
 
 - relative paths (`./`, `../`)
 - `tsconfig.json` / `jsconfig.json` path aliases
 - `package.json#imports`
-- user-defined alias maps (tsconfig `paths` format)
+- manual alias maps in tsconfig `paths` format
 
-Current rule implemented:
+## Rule: `extensions`
 
-- `prefer-alias-or-relative`
-
-## Rule: `prefer-alias-or-relative`
-
-Normalizes imports between alias and relative forms based on directory traversal depth.
+Enforces extension and index style for resolvable imports.
 
 - Autofix: yes
 - Scope:
@@ -29,25 +25,29 @@ Normalizes imports between alias and relative forms based on directory traversal
 ### Rule Options
 
 ```ts
-type PreferAliasOrRelativeOptions = {
-    depth?: number; // default: 1
+type ExtensionsRuleOptions = {
+    extension: 'always' | 'never';
+    index: 'always' | 'never';
     alias?: Array<{
         baseUrl: string;
         paths: Record<string, string[]>;
-    }>; // overrides global alias
+    }>;
+    extensionMapping?: Record<string, string>; // default: { ts: 'js', tsx: 'jsx', mts: 'mjs', cts: 'cjs' }
 };
 ```
 
-`depth` behavior:
+Behavior:
 
-- `< 0`: always prefer relative
-- `0`: always prefer alias when alias exists
-- `1`: only same-directory relative imports are allowed
-- `> 1`: allows more directory traversals before alias is required
+- `extension: 'always'`: enforces explicit extension in import specifier.
+- `extension: 'never'`: removes explicit extension when safe.
+- `index: 'always'`: enforces explicit `.../index` form for directory index targets.
+- `index: 'never'`: enforces directory form without `/index` when safe.
+- `alias` overrides global alias settings for this rule.
+- `extensionMapping` maps resolved source extension to emitted import extension.
 
 ### Global Settings
 
-Use `settings["module-path-fixer"]`:
+Use `settings['module-path-fixer']`:
 
 ```ts
 type ModulePathFixerSettings = {
@@ -74,14 +74,21 @@ export default [
         },
         settings: {
             'module-path-fixer': {
-                extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json'],
+                extensions: ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'],
                 useTsConfig: true,
                 usePackageJson: true,
                 alias: [{ baseUrl: '.', paths: { '@app/*': ['src/*'] } }],
             },
         },
         rules: {
-            'module-path-fixer/prefer-alias-or-relative': ['error', { depth: 1 }],
+            'module-path-fixer/extensions': [
+                'error',
+                {
+                    extension: 'always',
+                    index: 'never',
+                    extensionMapping: { ts: 'js', tsx: 'jsx' },
+                },
+            ],
         },
     },
 ];
@@ -89,40 +96,42 @@ export default [
 
 ### Usage Examples
 
-Given `depth: 0` (prefer alias):
+`extension: 'always', index: 'never'`
 
 ```ts
 // before
-import { tool } from '../utils/tool';
+import { helper } from '../utils/helper';
 
 // after
-import { tool } from '@app/utils/tool';
+import { helper } from '../utils/helper.js';
 ```
 
-Given `depth: 1` (prefer near relatives):
+`extension: 'never', index: 'never'`
 
 ```ts
 // before
-import { tool } from '@app/utils/tool';
+import mod from '../core/index.ts';
 
 // after
-import { tool } from '../utils/tool';
+import mod from '../core';
 ```
 
-With `package.json#imports` mapping:
-
-```json
-{
-    "imports": {
-        "#core": "./src/core/index.ts"
-    }
-}
-```
+`extension: 'always', index: 'always'`
 
 ```ts
 // before
 import mod from '../core';
 
-// after (with depth: 0)
-import mod from '#core';
+// after
+import mod from '../core/index.js';
+```
+
+Alias input with explicit extension removal:
+
+```ts
+// before
+import { tool } from '@app/utils/tool.ts';
+
+// after (extension: 'never')
+import { tool } from '@app/utils/tool';
 ```
