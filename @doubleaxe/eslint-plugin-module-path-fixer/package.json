@@ -15,6 +15,7 @@
     "type": "git",
     "url": "https://github.com/doubleaxe/dax-javascript-commons"
   },
+  "homepage": "https://github.com/doubleaxe/dax-javascript-commons/tree/main/%40doubleaxe/eslint-plugin-module-path-fixer",
   "engines": {
     "node": ">=22"
   },
