@@ -1,7 +1,7 @@
 {
   "name": "@doubleaxe/eslint-plugin-module-path-fixer",
   "version": "1.0.0",
-  "description": "SLint plugin for the standardized transformation of module specifiers. Enforces consistency between aliased and relative path formats and manages mandatory or prohibited file extensions across ESM and CommonJS modules.",
+  "description": "ESLint plugin for the standardized transformation of module specifiers. Enforces consistency between aliased and relative path formats and manages mandatory or prohibited file extensions across ESM and CommonJS modules.",
   "keywords": [
     "eslint",
     "eslint-plugin",
@@ -30,9 +30,9 @@
     "format": "prettier --write .",
     "check": "tsc --noEmit",
     "clean": "rimraf ./types ./dist",
-    "build": "tsc",
+    "build": "tsc -p ./tsconfig.build.json",
     "test": "vitest run",
-    "watch": "tsc --watch",
+    "watch": "tsc -p ./tsconfig.build.json --watch",
     "clean-build": "run-s clean build",
     "clean-watch": "run-s clean watch",
     "prepack": "run-s clean-build",
@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@typescript-eslint/utils": "^8.59.0",
+    "lru-cache": "^11.3.5",
     "tsconfig-paths": "^4.2.0"
   },
   "peerDependencies": {

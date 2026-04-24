@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { LRUCache } from 'lru-cache';
 import type { ConfigLoaderResult, ConfigLoaderSuccessResult, MatchPath } from 'tsconfig-paths';
 import { createMatchPath, loadConfig } from 'tsconfig-paths';
 
@@ -34,17 +35,16 @@ export type ResolvedImport = {
     tsJsConfig?: TsJsConfigCacheEntry;
 };
 
-export type ManualTsConfigAlias = {
-    alias: string;
-    paths: readonly string[];
+export type ManualTsConfigEntry = {
+    baseUrl: string;
+    paths: Readonly<Record<string, readonly string[]>>;
 };
 
 export type ResolveImportOptions = {
     caseInsensitive?: boolean;
     extensions?: readonly string[];
     importerFile: string;
-    manualTsConfigAliases?: readonly ManualTsConfigAlias[];
-    manualTsConfigBaseUrl?: string;
+    manualTsConfigs?: readonly ManualTsConfigEntry[];
     specifier: string;
     usePackageJson?: boolean;
     useTsConfig?: boolean;
@@ -52,8 +52,7 @@ export type ResolveImportOptions = {
 
 export type ImportResolverOptions = {
     caseInsensitive?: boolean;
-    manualTsConfigAliases?: readonly ManualTsConfigAlias[];
-    manualTsConfigBaseUrl?: string;
+    manualTsConfigs?: readonly ManualTsConfigEntry[];
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };
@@ -67,11 +66,15 @@ type EffectiveResolveOptions = {
     caseInsensitive: boolean;
     extensions: readonly string[];
     importerFile: string;
-    manualTsConfigAliases: readonly ManualTsConfigAlias[];
-    manualTsConfigBaseUrl?: string;
+    manualTsConfigs: readonly NormalizedManualTsConfigEntry[];
     specifier: string;
     usePackageJson: boolean;
     useTsConfig: boolean;
+};
+
+type NormalizedManualTsConfigEntry = {
+    baseUrl: string;
+    paths: Readonly<Record<string, readonly string[]>>;
 };
 
 function normalizePath(filePath: string): string {
@@ -201,22 +204,61 @@ function toNearestCacheKey(filePath: string): string {
     return normalizePath(path.dirname(filePath));
 }
 
-function normalizeManualAliases(aliases: readonly ManualTsConfigAlias[] | undefined): readonly ManualTsConfigAlias[] {
-    if (!aliases || aliases.length === 0) {
-        return [];
-    }
-
-    return aliases
-        .filter((entry) => entry.alias.length > 0 && entry.paths.length > 0)
-        .map((entry) => ({
-            alias: entry.alias,
-            paths: [...entry.paths],
-        }));
+function isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
 }
 
-function serializeManualAliases(aliases: readonly ManualTsConfigAlias[]): string {
-    return aliases
-        .map((entry) => `${entry.alias}=${entry.paths.join(',')}`)
+function hasStringArray(values: unknown): values is readonly string[] {
+    return Array.isArray(values) && values.every((item) => typeof item === 'string' && item.length > 0);
+}
+
+function normalizeManualPathsRecord(paths: unknown): Readonly<Record<string, readonly string[]>> {
+    if (!isObject(paths)) {
+        return {};
+    }
+
+    const normalized: Record<string, readonly string[]> = {};
+    for (const [alias, aliasPaths] of Object.entries(paths)) {
+        if (alias.length === 0 || !hasStringArray(aliasPaths) || aliasPaths.length === 0) {
+            continue;
+        }
+
+        normalized[alias] = [...aliasPaths];
+    }
+
+    return normalized;
+}
+
+function isManualTsConfigEntry(value: unknown): value is ManualTsConfigEntry {
+    return (
+        isObject(value) &&
+        typeof value['baseUrl'] === 'string' &&
+        value['baseUrl'].length > 0 &&
+        isObject(value['paths'])
+    );
+}
+
+function normalizeManualTsConfigs(
+    manualTsConfigs: readonly ManualTsConfigEntry[] | undefined
+): readonly NormalizedManualTsConfigEntry[] {
+    return (manualTsConfigs ?? [])
+        .filter((entry) => isManualTsConfigEntry(entry))
+        .map((entry) => ({
+            baseUrl: entry.baseUrl,
+            paths: normalizeManualPathsRecord(entry.paths),
+        }))
+        .filter((entry) => Object.keys(entry.paths).length > 0);
+}
+
+function serializeManualTsConfigs(configs: readonly NormalizedManualTsConfigEntry[]): string {
+    return configs
+        .map((entry) => {
+            const serializedPaths = Object.keys(entry.paths)
+                .sort()
+                .map((alias) => `${alias}=${(entry.paths[alias] ?? []).join(',')}`)
+                .join(';');
+            return `${entry.baseUrl ?? ''}=>${serializedPaths}`;
+        })
         .sort()
         .join('|');
 }
@@ -229,17 +271,20 @@ function toResolveCacheKey(options: EffectiveResolveOptions): string {
         options.caseInsensitive ? 'ci:1' : 'ci:0',
         options.useTsConfig ? 'ts:1' : 'ts:0',
         options.usePackageJson ? 'pkg:1' : 'pkg:0',
-        options.manualTsConfigBaseUrl ?? '',
-        serializeManualAliases(options.manualTsConfigAliases),
+        serializeManualTsConfigs(options.manualTsConfigs),
     ].join('\u0000');
 }
 
 export class ImportResolver {
     private readonly options: ImportResolverOptions;
-    private readonly resolveCache = new Map<string, null | ResolvedImport>();
-    private readonly tsJsNearestCache = new Map<string, null | TsJsConfigCacheEntry>();
-    private readonly packageNearestCache = new Map<string, null | PackageJsonCacheEntry>();
-    private readonly manualAliasMatchPathCache = new Map<string, MatchPath>();
+    private static readonly resolveCache = new LRUCache<string, { value: null | ResolvedImport }>({ max: 10_000 });
+    private static readonly tsJsNearestCache = new LRUCache<string, { value: null | TsJsConfigCacheEntry }>({
+        max: 5_000,
+    });
+    private static readonly packageNearestCache = new LRUCache<string, { value: null | PackageJsonCacheEntry }>({
+        max: 5_000,
+    });
+    private static readonly manualAliasMatchPathCache = new LRUCache<string, MatchPath>({ max: 2_500 });
 
     public constructor(options: ImportResolverOptions = {}) {
         this.options = options;
@@ -248,51 +293,51 @@ export class ImportResolver {
     public resolve(options: ResolveImportOptions): null | ResolvedImport {
         const effectiveOptions = this.toEffectiveResolveOptions(options);
         const key = toResolveCacheKey(effectiveOptions);
-        const cached = this.resolveCache.get(key);
+        const cached = ImportResolver.resolveCache.get(key);
 
         if (cached !== undefined) {
-            return cached;
+            return cached.value;
         }
 
         const resolved = this.resolveUncached(effectiveOptions);
-        this.resolveCache.set(key, resolved);
+        ImportResolver.resolveCache.set(key, { value: resolved });
 
         return resolved;
     }
 
     public getNearestTsJsConfig(filePath: string): null | TsJsConfigCacheEntry {
         const startDir = toNearestCacheKey(filePath);
-        const cached = this.tsJsNearestCache.get(startDir);
+        const cached = ImportResolver.tsJsNearestCache.get(startDir);
 
         if (cached !== undefined) {
-            return cached;
+            return cached.value;
         }
 
         const nearest = this.findNearestTsJsConfig(startDir);
-        this.tsJsNearestCache.set(startDir, nearest);
+        ImportResolver.tsJsNearestCache.set(startDir, { value: nearest });
 
         return nearest;
     }
 
     public getNearestPackageJson(filePath: string): null | PackageJsonCacheEntry {
         const startDir = toNearestCacheKey(filePath);
-        const cached = this.packageNearestCache.get(startDir);
+        const cached = ImportResolver.packageNearestCache.get(startDir);
 
         if (cached !== undefined) {
-            return cached;
+            return cached.value;
         }
 
         const nearest = this.findNearestPackageJson(startDir);
-        this.packageNearestCache.set(startDir, nearest);
+        ImportResolver.packageNearestCache.set(startDir, { value: nearest });
 
         return nearest;
     }
 
     public clearCaches(): void {
-        this.resolveCache.clear();
-        this.tsJsNearestCache.clear();
-        this.packageNearestCache.clear();
-        this.manualAliasMatchPathCache.clear();
+        ImportResolver.resolveCache.clear();
+        ImportResolver.tsJsNearestCache.clear();
+        ImportResolver.packageNearestCache.clear();
+        ImportResolver.manualAliasMatchPathCache.clear();
     }
 
     private toEffectiveResolveOptions(options: ResolveImportOptions): EffectiveResolveOptions {
@@ -303,10 +348,7 @@ export class ImportResolver {
             caseInsensitive: options.caseInsensitive ?? this.options.caseInsensitive ?? getDefaultCaseInsensitive(),
             useTsConfig: options.useTsConfig ?? this.options.useTsConfig ?? true,
             usePackageJson: options.usePackageJson ?? this.options.usePackageJson ?? true,
-            manualTsConfigAliases: normalizeManualAliases(
-                options.manualTsConfigAliases ?? this.options.manualTsConfigAliases
-            ),
-            manualTsConfigBaseUrl: options.manualTsConfigBaseUrl ?? this.options.manualTsConfigBaseUrl,
+            manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs ?? this.options.manualTsConfigs),
         };
     }
 
@@ -334,14 +376,14 @@ export class ImportResolver {
             };
         }
 
-        if (options.useTsConfig) {
+        if (options.useTsConfig || options.manualTsConfigs.length > 0) {
             const tsconfigResolved = this.tryResolveWithTsconfigPaths(
                 importerFile,
                 specifier,
                 extensions,
                 caseInsensitive,
-                options.manualTsConfigAliases,
-                options.manualTsConfigBaseUrl
+                options.useTsConfig,
+                options.manualTsConfigs
             );
             if (tsconfigResolved) {
                 return {
@@ -416,10 +458,10 @@ export class ImportResolver {
         specifier: string,
         extensions: readonly string[],
         caseInsensitive: boolean,
-        manualAliases: readonly ManualTsConfigAlias[],
-        manualBaseUrl: string | undefined
+        useTsConfig: boolean,
+        manualTsConfigs: readonly NormalizedManualTsConfigEntry[]
     ): { resolvedFile: string; tsJsConfig?: TsJsConfigCacheEntry } | null {
-        const nearestConfig = this.getNearestTsJsConfig(importerFile);
+        const nearestConfig = useTsConfig ? this.getNearestTsJsConfig(importerFile) : null;
 
         if (nearestConfig?.matchPath) {
             const tsconfigResolved = this.tryResolveWithTsconfigMatchPath(
@@ -433,68 +475,58 @@ export class ImportResolver {
             }
         }
 
-        if (manualAliases.length === 0) {
+        if (manualTsConfigs.length === 0) {
             return null;
         }
 
-        const manualMatchPath = this.getManualAliasMatchPath(
-            this.getManualTsConfigBaseUrl(importerFile, nearestConfig, manualBaseUrl),
-            manualAliases
-        );
+        for (const manualTsConfig of manualTsConfigs) {
+            const manualMatchPath = this.getManualAliasMatchPath(
+                this.getManualTsConfigBaseUrl(manualTsConfig.baseUrl),
+                manualTsConfig.paths
+            );
 
-        const manualResolved = this.tryResolveWithTsconfigMatchPath(
-            manualMatchPath,
-            specifier,
-            extensions,
-            caseInsensitive
-        );
-        if (!manualResolved) {
-            return null;
+            const manualResolved = this.tryResolveWithTsconfigMatchPath(
+                manualMatchPath,
+                specifier,
+                extensions,
+                caseInsensitive
+            );
+            if (!manualResolved) {
+                continue;
+            }
+
+            return {
+                resolvedFile: manualResolved,
+                tsJsConfig: nearestConfig ?? undefined,
+            };
         }
 
-        return {
-            resolvedFile: manualResolved,
-            tsJsConfig: nearestConfig ?? undefined,
-        };
+        return null;
     }
 
-    private getManualTsConfigBaseUrl(
-        importerFile: string,
-        nearestConfig: null | TsJsConfigCacheEntry,
-        manualBaseUrl: string | undefined
-    ): string {
-        if (manualBaseUrl) {
-            return path.isAbsolute(manualBaseUrl)
-                ? normalizePath(manualBaseUrl)
-                : normalizePath(path.resolve(process.cwd(), manualBaseUrl));
-        }
-
-        if (nearestConfig && isTsConfigSuccess(nearestConfig.config)) {
-            return normalizePath(nearestConfig.config.absoluteBaseUrl);
-        }
-
-        const nearestPackageJson = this.getNearestPackageJson(importerFile);
-        if (nearestPackageJson) {
-            return normalizePath(path.dirname(nearestPackageJson.path));
-        }
-
-        return normalizePath(path.dirname(importerFile));
+    private getManualTsConfigBaseUrl(manualBaseUrl: string): string {
+        return path.isAbsolute(manualBaseUrl)
+            ? normalizePath(manualBaseUrl)
+            : normalizePath(path.resolve(process.cwd(), manualBaseUrl));
     }
 
-    private getManualAliasMatchPath(baseUrl: string, aliases: readonly ManualTsConfigAlias[]): MatchPath {
-        const cacheKey = `${baseUrl}\u0000${serializeManualAliases(aliases)}`;
-        const cached = this.manualAliasMatchPathCache.get(cacheKey);
+    private getManualAliasMatchPath(
+        baseUrl: string,
+        paths: Readonly<Record<string, readonly string[]>>
+    ): MatchPath {
+        const cacheKey = serializeManualTsConfigs([{ baseUrl, paths }]);
+        const cached = ImportResolver.manualAliasMatchPathCache.get(cacheKey);
         if (cached) {
             return cached;
         }
 
-        const paths: Record<string, string[]> = {};
-        for (const aliasEntry of aliases) {
-            paths[aliasEntry.alias] = [...aliasEntry.paths];
+        const tsconfigPaths: Record<string, string[]> = {};
+        for (const [alias, aliasPaths] of Object.entries(paths)) {
+            tsconfigPaths[alias] = [...aliasPaths];
         }
 
-        const matchPath = createMatchPath(baseUrl, paths);
-        this.manualAliasMatchPathCache.set(cacheKey, matchPath);
+        const matchPath = createMatchPath(baseUrl, tsconfigPaths);
+        ImportResolver.manualAliasMatchPathCache.set(cacheKey, matchPath);
 
         return matchPath;
     }
@@ -563,13 +595,13 @@ export class ImportResolver {
         let currentDir = startDir;
 
         while (true) {
-            const memoized = this.tsJsNearestCache.get(currentDir);
+            const memoized = ImportResolver.tsJsNearestCache.get(currentDir);
             if (memoized !== undefined) {
                 for (const dir of visited) {
-                    this.tsJsNearestCache.set(dir, memoized);
+                    ImportResolver.tsJsNearestCache.set(dir, memoized);
                 }
 
-                return memoized;
+                return memoized.value;
             }
 
             visited.push(currentDir);
@@ -610,7 +642,7 @@ export class ImportResolver {
                 };
 
                 for (const dir of visited) {
-                    this.tsJsNearestCache.set(dir, entry);
+                    ImportResolver.tsJsNearestCache.set(dir, { value: entry });
                 }
 
                 return entry;
@@ -619,7 +651,7 @@ export class ImportResolver {
             const parentDir = path.dirname(currentDir);
             if (parentDir === currentDir) {
                 for (const dir of visited) {
-                    this.tsJsNearestCache.set(dir, null);
+                    ImportResolver.tsJsNearestCache.set(dir, { value: null });
                 }
 
                 return null;
@@ -634,13 +666,13 @@ export class ImportResolver {
         let currentDir = startDir;
 
         while (true) {
-            const memoized = this.packageNearestCache.get(currentDir);
+            const memoized = ImportResolver.packageNearestCache.get(currentDir);
             if (memoized !== undefined) {
                 for (const dir of visited) {
-                    this.packageNearestCache.set(dir, memoized);
+                    ImportResolver.packageNearestCache.set(dir, memoized);
                 }
 
-                return memoized;
+                return memoized.value;
             }
 
             visited.push(currentDir);
@@ -658,7 +690,7 @@ export class ImportResolver {
                     };
 
                     for (const dir of visited) {
-                        this.packageNearestCache.set(dir, entry);
+                        ImportResolver.packageNearestCache.set(dir, { value: entry });
                     }
 
                     return entry;
@@ -668,7 +700,7 @@ export class ImportResolver {
             const parentDir = path.dirname(currentDir);
             if (parentDir === currentDir) {
                 for (const dir of visited) {
-                    this.packageNearestCache.set(dir, null);
+                    ImportResolver.packageNearestCache.set(dir, { value: null });
                 }
 
                 return null;

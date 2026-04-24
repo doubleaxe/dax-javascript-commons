@@ -4,3 +4,4 @@ dist
 tmp
 pnpm-lock.yaml
 @doubleaxe/eslint-config/types
+@doubleaxe/eslint-plugin-module-path-fixer/types

@@ -128,8 +128,7 @@ describe('ImportResolver', () => {
         const target = path.join(root, 'src/shared/tool.ts');
 
         const resolver = createImportResolver({
-            manualTsConfigAliases: [{ alias: '@manual/*', paths: ['src/*'] }],
-            manualTsConfigBaseUrl: root,
+            manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
         });
 
         const resolved = resolver.resolve({
@@ -167,6 +166,50 @@ describe('ImportResolver', () => {
         });
 
         expect(importsResolved).toBeNull();
+    });
+
+    it('resolves manual tsconfig entries even when useTsConfig is disabled', () => {
+        const root = mkTempProjectFromFixture('manual');
+        const importer = path.join(root, 'src/feature/importer.ts');
+        const target = path.join(root, 'src/shared/tool.ts');
+
+        const resolver = createImportResolver({
+            useTsConfig: false,
+            manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
+        });
+
+        const resolved = resolver.resolve({
+            importerFile: importer,
+            specifier: '@manual/shared/tool',
+            extensions: ['.ts'],
+        });
+
+        expect(resolved).not.toBeNull();
+        expect(resolved?.strategy).toBe('tsconfig-paths');
+        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+    });
+
+    it('resolves using matching entry from multiple manualTsConfigs', () => {
+        const root = mkTempProjectFromFixture('manual');
+        const importer = path.join(root, 'src/feature/importer.ts');
+        const target = path.join(root, 'src/shared/tool.ts');
+
+        const resolver = createImportResolver({
+            manualTsConfigs: [
+                { baseUrl: root, paths: { '@other/*': ['src/other/*'] } },
+                { baseUrl: root, paths: { '@manual/*': ['src/*'] } },
+            ],
+        });
+
+        const resolved = resolver.resolve({
+            importerFile: importer,
+            specifier: '@manual/shared/tool',
+            extensions: ['.ts'],
+        });
+
+        expect(resolved).not.toBeNull();
+        expect(resolved?.strategy).toBe('tsconfig-paths');
+        expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
     it('caches resolved import result and recomputes after clearCaches', () => {

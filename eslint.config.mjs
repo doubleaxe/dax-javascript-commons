@@ -6,9 +6,9 @@ const config = defineConfig(...es.configs.ts, ...es.configs.node, {
         'test',
         '@doubleaxe/eslint-config/types',
         '@doubleaxe/eslint-config/dist',
-        '@doubleaxe/eslint-plugin-import-paths-extensions/types',
-        '@doubleaxe/eslint-plugin-import-paths-extensions/dist',
-        '@doubleaxe/eslint-plugin-import-paths-extensions/test-assets',
+        '@doubleaxe/eslint-plugin-module-path-fixer/types',
+        '@doubleaxe/eslint-plugin-module-path-fixer/dist',
+        '@doubleaxe/eslint-plugin-module-path-fixer/test-assets',
     ],
 });
 export default config;
