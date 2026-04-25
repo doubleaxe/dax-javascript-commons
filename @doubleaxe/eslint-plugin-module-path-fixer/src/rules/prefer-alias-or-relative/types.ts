@@ -2,9 +2,10 @@ import type { ManualTsConfigEntry, ResolvedImport, ResolveImportOptions } from '
 
 export type PreferAliasOrRelativeCoreOptions = {
     caseInsensitive?: boolean;
-    depth?: number;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
+    parentFolderAliasDepth?: number;
+    preferFolderAlias?: boolean;
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };

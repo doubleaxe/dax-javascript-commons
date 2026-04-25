@@ -41,6 +41,11 @@ function mkTempProjectFromFixture(fixtureName: string): string {
     return root;
 }
 
+function writeFile(filePath: string, content: string): void {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, content);
+}
+
 afterEach(() => {
     while (tempRoots.length > 0) {
         const root = tempRoots.pop();
@@ -51,11 +56,11 @@ afterEach(() => {
 });
 
 describe('PreferAliasOrRelativeCore', () => {
-    it('converts deep relative specifier to tsconfig alias when above depth', () => {
+    it('converts parent relative specifier to tsconfig alias by default', () => {
         const root = mkTempProjectFromFixture('alias');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ depth: 0, extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
         const result = core.evaluate({
             importerFile: importer,
             specifier: '../utils/tool',
@@ -66,52 +71,125 @@ describe('PreferAliasOrRelativeCore', () => {
         expect(result?.nextSpecifier).toBe('@app/utils/tool');
     });
 
-    it('does not convert relative specifier when traversal depth is allowed', () => {
+    it('normalizes relative path before alias decision', () => {
         const root = mkTempProjectFromFixture('alias');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ depth: 1, extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '../utils/tool',
-        });
-
-        expect(result).toBeNull();
-    });
-
-    it('converts alias to shortest stable relative path when depth allows it', () => {
-        const root = mkTempProjectFromFixture('alias');
-        const importer = path.join(root, 'src/feature/importer.ts');
-
-        const core = createPreferAliasOrRelativeCore({ depth: 1, extensions: ['.ts'] });
-        const result = core.evaluate({
-            importerFile: importer,
-            specifier: '@app/utils/tool',
+            specifier: '../utils/../utils/tool',
         });
 
         expect(result).not.toBeNull();
-        expect(result?.kind).toBe('to-relative');
-        expect(result?.nextSpecifier).toBe('../utils/tool');
+        expect(result?.kind).toBe('to-alias');
+        expect(result?.nextSpecifier).toBe('@app/utils/tool');
     });
 
-    it('does not convert alias to relative when traversal depth exceeds allowed threshold', () => {
+    it('does not convert local relative specifier', () => {
         const root = mkTempProjectFromFixture('alias');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ depth: 0, extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '@app/utils/tool',
+            specifier: './another',
         });
 
         expect(result).toBeNull();
     });
 
-    it('treats negative depth as always prefer relative', () => {
+    it('supports parentFolderAliasDepth threshold', () => {
+        const root = mkTempRoot();
+        const importer = path.join(root, 'src/rr/feature/importer.ts');
+        writeFile(importer, 'export {};');
+        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+
+        const core = createPreferAliasOrRelativeCore({
+            extensions: ['.ts'],
+            preferFolderAlias: false,
+            parentFolderAliasDepth: 1,
+            manualTsConfigs: [{ baseUrl: root, paths: { '@root/*': ['src/*'] } }],
+            useTsConfig: false,
+        });
+        const result = core.evaluate({
+            importerFile: importer,
+            specifier: '../ff/qq',
+        });
+
+        expect(result).toBeNull();
+    });
+
+    it('does not convert parent relative path when parentFolderAliasDepth is negative', () => {
+        const root = mkTempRoot();
+        const importer = path.join(root, 'src/rr/feature/importer.ts');
+        writeFile(importer, 'export {};');
+        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+
+        const core = createPreferAliasOrRelativeCore({
+            extensions: ['.ts'],
+            preferFolderAlias: false,
+            parentFolderAliasDepth: -1,
+            manualTsConfigs: [{ baseUrl: root, paths: { '@root/*': ['src/*'] } }],
+            useTsConfig: false,
+        });
+        const result = core.evaluate({
+            importerFile: importer,
+            specifier: '../ff/qq',
+        });
+
+        expect(result).toBeNull();
+    });
+
+    it('finds nearest alias to parent folder when preferFolderAlias is false', () => {
+        const root = mkTempRoot();
+        const importer = path.join(root, 'src/rr/feature/importer.ts');
+        writeFile(importer, 'export {};');
+        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+
+        const core = createPreferAliasOrRelativeCore({
+            extensions: ['.ts'],
+            preferFolderAlias: false,
+            parentFolderAliasDepth: 0,
+            manualTsConfigs: [{ baseUrl: root, paths: { '@root/*': ['src/*'] } }],
+            useTsConfig: false,
+        });
+        const result = core.evaluate({
+            importerFile: importer,
+            specifier: '../ff/qq',
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.kind).toBe('to-alias');
+        expect(result?.nextSpecifier).toBe('@root/rr/ff/qq');
+    });
+
+    it('prefers alias found by folder-backward walk by default', () => {
+        const root = mkTempRoot();
+        const importer = path.join(root, 'src/rr/feature/importer.ts');
+        writeFile(importer, 'export {};');
+        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+
+        const core = createPreferAliasOrRelativeCore({
+            extensions: ['.ts'],
+            manualTsConfigs: [{ baseUrl: root, paths: { '@root/*': ['src/*'], '@rr/*': ['src/rr/*'] } }],
+            useTsConfig: false,
+        });
+        const result = core.evaluate({
+            importerFile: importer,
+            specifier: '../ff/qq',
+        });
+
+        expect(result).not.toBeNull();
+        expect(result?.kind).toBe('to-alias');
+        expect(result?.nextSpecifier).toBe('@rr/ff/qq');
+    });
+
+    it('converts alias to shortest stable relative path', () => {
         const root = mkTempProjectFromFixture('alias');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ depth: -1, extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
         const result = core.evaluate({
             importerFile: importer,
             specifier: '@app/utils/tool',
@@ -126,7 +204,7 @@ describe('PreferAliasOrRelativeCore', () => {
         const root = mkTempProjectFromFixture('imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ depth: 0, extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
         const result = core.evaluate({
             importerFile: importer,
             specifier: '../core',
@@ -141,7 +219,7 @@ describe('PreferAliasOrRelativeCore', () => {
         const root = mkTempProjectFromFixture('imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ depth: 1, extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
         const result = core.evaluate({
             importerFile: importer,
             specifier: '#core',
@@ -152,31 +230,11 @@ describe('PreferAliasOrRelativeCore', () => {
         expect(result?.nextSpecifier).toBe('../core');
     });
 
-    it('supports manual alias mappings', () => {
-        const root = mkTempProjectFromFixture('manual');
-        const importer = path.join(root, 'src/feature/importer.ts');
-
-        const core = createPreferAliasOrRelativeCore({
-            depth: 0,
-            extensions: ['.ts'],
-            manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
-            useTsConfig: false,
-        });
-        const result = core.evaluate({
-            importerFile: importer,
-            specifier: '../shared/tool',
-        });
-
-        expect(result).not.toBeNull();
-        expect(result?.kind).toBe('to-alias');
-        expect(result?.nextSpecifier).toBe('@manual/shared/tool');
-    });
-
     it('ignores unresolved imports', () => {
         const root = mkTempProjectFromFixture('alias');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ depth: 1, extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
         const result = core.evaluate({
             importerFile: importer,
             specifier: 'react',

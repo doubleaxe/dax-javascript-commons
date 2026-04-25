@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 
-import { createImportResolver, getParentTraversalDepth } from '../../resolve.js';
+import { createImportResolver } from '../../resolve.js';
 import { collectAliasCandidatesForResolvedImport } from './alias-candidates.js';
 import type {
     PreferAliasOrRelativeCoreOptions,
@@ -11,16 +11,17 @@ import type {
 
 type NormalizedCoreOptions = {
     caseInsensitive?: boolean;
-    depth: number;
     extensions?: readonly string[];
     manualTsConfigs?: PreferAliasOrRelativeCoreOptions['manualTsConfigs'];
+    parentFolderAliasDepth: number;
+    preferFolderAlias: boolean;
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };
 
-function normalizeDepth(depth: number | undefined): number {
+function normalizeParentFolderAliasDepth(depth: number | undefined): number {
     if (depth === undefined || Number.isNaN(depth) || !Number.isFinite(depth)) {
-        return 1;
+        return 0;
     }
 
     return Math.trunc(depth);
@@ -29,15 +30,6 @@ function normalizeDepth(depth: number | undefined): number {
 function normalizePathForCompare(value: string, caseInsensitive: boolean): string {
     const normalized = path.normalize(value);
     return caseInsensitive ? normalized.toLowerCase() : normalized;
-}
-
-function removeExtension(specifier: string): string {
-    const extension = path.extname(specifier);
-    if (!extension) {
-        return specifier;
-    }
-
-    return specifier.slice(0, -extension.length);
 }
 
 function toPosix(value: string): string {
@@ -58,6 +50,109 @@ function compareByLengthThenLex(a: string, b: string): number {
     }
 
     return a.localeCompare(b);
+}
+
+function normalizeRelativeSpecifier(specifier: string): string {
+    const normalized = path.posix.normalize(specifier);
+    if (normalized === '.' || normalized.length === 0) {
+        return './';
+    }
+
+    if (normalized.startsWith('.')) {
+        return normalized;
+    }
+
+    return ensureRelativePrefix(normalized);
+}
+
+function toPosixPath(value: string): string {
+    return value.split(path.sep).join('/');
+}
+
+function removeExtension(specifier: string): string {
+    const extension = path.extname(specifier);
+    if (!extension) {
+        return specifier;
+    }
+
+    return specifier.slice(0, -extension.length);
+}
+
+function buildSubpathCandidates(baseDir: string, resolvedFile: string): string[] {
+    const relativeToBase = path.relative(baseDir, resolvedFile);
+    if (!relativeToBase || relativeToBase.startsWith('..') || path.isAbsolute(relativeToBase)) {
+        return [];
+    }
+
+    const withExt = toPosixPath(relativeToBase);
+    const withoutExt = removeExtension(withExt);
+    const candidates = [withExt, withoutExt];
+
+    if (withoutExt.endsWith('/index')) {
+        const withoutIndex = withoutExt.slice(0, -'/index'.length);
+        if (withoutIndex.length > 0) {
+            candidates.push(withoutIndex);
+        }
+    }
+
+    return [...new Set(candidates)];
+}
+
+function matchesSubpath(aliasSpecifier: string, subpath: string): boolean {
+    if (aliasSpecifier === subpath) {
+        return true;
+    }
+
+    if (aliasSpecifier.startsWith('#') && aliasSpecifier.slice(1) === subpath) {
+        return true;
+    }
+
+    return aliasSpecifier.endsWith(`/${subpath}`);
+}
+
+function getLeadingParentDepth(specifier: string): number {
+    if (!specifier.startsWith('.')) {
+        return 0;
+    }
+
+    const segments = specifier.split('/');
+    let depth = 0;
+
+    for (const segment of segments) {
+        if (segment === '..') {
+            depth += 1;
+            continue;
+        }
+
+        break;
+    }
+
+    return depth;
+}
+
+function getBackwardFolderSpecifiers(specifier: string): string[] {
+    const segments = specifier.split('/');
+    const candidates: string[] = [];
+
+    for (let end = segments.length - 1; end >= 0; end -= 1) {
+        const folderSegments = segments.slice(0, end);
+        if (folderSegments.length === 0) {
+            candidates.push('.');
+            continue;
+        }
+
+        candidates.push(folderSegments.join('/'));
+    }
+
+    return candidates;
+}
+
+function getParentAnchorSpecifier(depth: number): string {
+    if (depth <= 0) {
+        return '.';
+    }
+
+    return new Array(depth).fill('..').join('/');
 }
 
 function buildRelativeCandidates(importerFile: string, resolvedFile: string): string[] {
@@ -110,9 +205,10 @@ export class PreferAliasOrRelativeCore {
 
     public constructor(options: PreferAliasOrRelativeCoreOptions = {}, resolver?: ResolverLike) {
         this.options = {
-            depth: normalizeDepth(options.depth),
             caseInsensitive: options.caseInsensitive,
             extensions: options.extensions,
+            preferFolderAlias: options.preferFolderAlias ?? true,
+            parentFolderAliasDepth: normalizeParentFolderAliasDepth(options.parentFolderAliasDepth),
             usePackageJson: options.usePackageJson,
             useTsConfig: options.useTsConfig,
             manualTsConfigs: options.manualTsConfigs,
@@ -128,51 +224,62 @@ export class PreferAliasOrRelativeCore {
     }
 
     public evaluate(input: PreferAliasOrRelativeInput): null | PreferAliasOrRelativeDecision {
-        const resolved = this.resolver.resolve(buildResolveInput(input, this.options, input.specifier));
+        const normalizedSpecifier = input.specifier.startsWith('.')
+            ? normalizeRelativeSpecifier(input.specifier)
+            : input.specifier;
+        const normalizedInput = { ...input, specifier: normalizedSpecifier };
+        const resolved = this.resolver.resolve(buildResolveInput(normalizedInput, this.options, normalizedInput.specifier));
         if (!resolved) {
             return null;
         }
 
-        if (input.specifier.startsWith('.')) {
-            return this.tryConvertRelativeToAlias(input, resolved);
+        if (normalizedInput.specifier.startsWith('.')) {
+            return this.tryConvertRelativeToAlias(normalizedInput, resolved);
         }
 
-        return this.tryConvertAliasToRelative(input, resolved);
+        return this.tryConvertAliasToRelative(normalizedInput, resolved);
     }
 
     private tryConvertRelativeToAlias(
         input: PreferAliasOrRelativeInput,
         resolved: NonNullable<ReturnType<ResolverLike['resolve']>>
     ): null | PreferAliasOrRelativeDecision {
-        if (this.options.depth < 0) {
-            return null;
-        }
-
-        const traversalDepth = getParentTraversalDepth(input.specifier);
-        if (traversalDepth <= this.options.depth) {
-            return null;
-        }
-
         const aliases = collectAliasCandidatesForResolvedImport(resolved, {
             manualTsConfigs: this.options.manualTsConfigs,
-        }).sort(compareByLengthThenLex);
+        });
+        const verifiedAliases = aliases
+            .sort(compareByLengthThenLex)
+            .filter((aliasSpecifier) => this.isAliasSpecifierEquivalent(input, resolved, aliasSpecifier));
 
-        for (const aliasSpecifier of aliases) {
-            const aliasResolved = this.resolver.resolve(buildResolveInput(input, this.options, aliasSpecifier));
-            if (!aliasResolved) {
-                continue;
+        if (this.options.preferFolderAlias) {
+            const folderAlias = this.findAliasByBackwardFolderWalk(input, resolved, verifiedAliases);
+            if (folderAlias) {
+                return {
+                    kind: 'to-alias',
+                    nextSpecifier: folderAlias,
+                    resolved,
+                };
             }
+        }
 
-            if (
-                normalizePathForCompare(aliasResolved.resolvedFile, this.options.caseInsensitive ?? false) !==
-                normalizePathForCompare(resolved.resolvedFile, this.options.caseInsensitive ?? false)
-            ) {
-                continue;
-            }
+        if (input.specifier === '.' || input.specifier.startsWith('./')) {
+            return null;
+        }
 
+        const traversalDepth = getLeadingParentDepth(input.specifier);
+        if (this.options.parentFolderAliasDepth < 0) {
+            return null;
+        }
+
+        if (traversalDepth <= this.options.parentFolderAliasDepth) {
+            return null;
+        }
+
+        const parentAnchorAlias = this.findAliasNearestToParentFolder(input, resolved, verifiedAliases, traversalDepth);
+        if (parentAnchorAlias) {
             return {
                 kind: 'to-alias',
-                nextSpecifier: aliasSpecifier,
+                nextSpecifier: parentAnchorAlias,
                 resolved,
             };
         }
@@ -187,12 +294,6 @@ export class PreferAliasOrRelativeCore {
         const relativeCandidates = buildRelativeCandidates(input.importerFile, resolved.resolvedFile);
 
         for (const relativeSpecifier of relativeCandidates) {
-            const traversalDepth = getParentTraversalDepth(relativeSpecifier);
-            const depthAllowed = this.options.depth < 0 || traversalDepth <= this.options.depth;
-            if (!depthAllowed) {
-                continue;
-            }
-
             const relativeResolved = this.resolver.resolve(buildResolveInput(input, this.options, relativeSpecifier));
             if (!relativeResolved) {
                 continue;
@@ -213,6 +314,80 @@ export class PreferAliasOrRelativeCore {
         }
 
         return null;
+    }
+
+    private isAliasSpecifierEquivalent(
+        input: PreferAliasOrRelativeInput,
+        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>,
+        aliasSpecifier: string
+    ): boolean {
+        const aliasResolved = this.resolver.resolve(buildResolveInput(input, this.options, aliasSpecifier));
+        if (!aliasResolved) {
+            return false;
+        }
+
+        return (
+            normalizePathForCompare(aliasResolved.resolvedFile, this.options.caseInsensitive ?? false) ===
+            normalizePathForCompare(resolved.resolvedFile, this.options.caseInsensitive ?? false)
+        );
+    }
+
+    private findAliasByBackwardFolderWalk(
+        input: PreferAliasOrRelativeInput,
+        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>,
+        aliases: readonly string[]
+    ): null | string {
+        const importerDir = path.dirname(input.importerFile);
+        const folderSpecifiers = getBackwardFolderSpecifiers(input.specifier);
+
+        for (const folderSpecifier of folderSpecifiers) {
+            if (folderSpecifier === '.') {
+                break;
+            }
+
+            const folderAbs = path.resolve(importerDir, folderSpecifier);
+            const subpathCandidates = buildSubpathCandidates(folderAbs, resolved.resolvedFile);
+            if (subpathCandidates.length === 0) {
+                continue;
+            }
+
+            for (const aliasSpecifier of aliases) {
+                if (subpathCandidates.some((subpath) => matchesSubpath(aliasSpecifier, subpath))) {
+                    return aliasSpecifier;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private findAliasNearestToParentFolder(
+        input: PreferAliasOrRelativeInput,
+        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>,
+        aliases: readonly string[],
+        traversalDepth: number
+    ): null | string {
+        const importerDir = path.dirname(input.importerFile);
+        const parentAnchorSpecifier = getParentAnchorSpecifier(traversalDepth);
+        let currentDir = path.resolve(importerDir, parentAnchorSpecifier);
+
+        while (true) {
+            const subpathCandidates = buildSubpathCandidates(currentDir, resolved.resolvedFile);
+            if (subpathCandidates.length > 0) {
+                for (const aliasSpecifier of aliases) {
+                    if (subpathCandidates.some((subpath) => matchesSubpath(aliasSpecifier, subpath))) {
+                        return aliasSpecifier;
+                    }
+                }
+            }
+
+            const parentDir = path.dirname(currentDir);
+            if (parentDir === currentDir) {
+                return null;
+            }
+
+            currentDir = parentDir;
+        }
     }
 }
 

@@ -13,7 +13,8 @@ import {
 
 type PreferAliasOrRelativeRuleOptions = {
     alias?: readonly ManualTsConfigEntry[];
-    depth?: number;
+    folderAlias?: 'always' | 'never';
+    parentFolderAliasDepth?: number;
 };
 
 type Options = [PreferAliasOrRelativeRuleOptions?];
@@ -24,7 +25,8 @@ const schema: JSONSchema4 = {
     type: 'object',
     additionalProperties: false,
     properties: {
-        depth: { type: 'integer' },
+        folderAlias: { type: 'string', enum: ['always', 'never'] },
+        parentFolderAliasDepth: { type: 'integer' },
         alias: {
             type: 'array',
             items: {
@@ -50,7 +52,7 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
     meta: {
         type: 'suggestion',
         docs: {
-            description: 'Normalize import specifiers between alias and relative forms by traversal depth.',
+            description: 'Normalize import specifiers between alias and relative forms.',
         },
         fixable: 'code',
         schema: [schema],
@@ -69,7 +71,8 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
         const ruleOptions = context.options[0] ?? {};
 
         const core = createPreferAliasOrRelativeCore({
-            depth: ruleOptions.depth,
+            preferFolderAlias: (ruleOptions.folderAlias ?? 'always') === 'always',
+            parentFolderAliasDepth: ruleOptions.parentFolderAliasDepth,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
             caseInsensitive: settings.caseInsensitive,
