@@ -41,11 +41,6 @@ function mkTempProjectFromFixture(fixtureName: string): string {
     return root;
 }
 
-function writeFile(filePath: string, content: string): void {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, content);
-}
-
 afterEach(() => {
     while (tempRoots.length > 0) {
         const root = tempRoots.pop();
@@ -100,10 +95,8 @@ describe('PreferAliasOrRelativeCore', () => {
     });
 
     it('supports parentFolderAliasDepth threshold', () => {
-        const root = mkTempRoot();
-        const importer = path.join(root, 'src/rr/feature/importer.ts');
-        writeFile(importer, 'export {};');
-        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+        const root = mkTempProjectFromFixture('parent-folder');
+        const importer = path.join(root, 'src/components/feature/importer.ts');
 
         const core = createPreferAliasOrRelativeCore({
             extensions: ['.ts'],
@@ -114,17 +107,15 @@ describe('PreferAliasOrRelativeCore', () => {
         });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '../ff/qq',
+            specifier: '../utils/helper',
         });
 
         expect(result).toBeNull();
     });
 
     it('does not convert parent relative path when parentFolderAliasDepth is negative', () => {
-        const root = mkTempRoot();
-        const importer = path.join(root, 'src/rr/feature/importer.ts');
-        writeFile(importer, 'export {};');
-        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+        const root = mkTempProjectFromFixture('parent-folder');
+        const importer = path.join(root, 'src/components/feature/importer.ts');
 
         const core = createPreferAliasOrRelativeCore({
             extensions: ['.ts'],
@@ -135,17 +126,15 @@ describe('PreferAliasOrRelativeCore', () => {
         });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '../ff/qq',
+            specifier: '../utils/helper',
         });
 
         expect(result).toBeNull();
     });
 
     it('finds nearest alias to parent folder when preferFolderAlias is false', () => {
-        const root = mkTempRoot();
-        const importer = path.join(root, 'src/rr/feature/importer.ts');
-        writeFile(importer, 'export {};');
-        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+        const root = mkTempProjectFromFixture('parent-folder');
+        const importer = path.join(root, 'src/components/feature/importer.ts');
 
         const core = createPreferAliasOrRelativeCore({
             extensions: ['.ts'],
@@ -156,33 +145,33 @@ describe('PreferAliasOrRelativeCore', () => {
         });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '../ff/qq',
+            specifier: '../utils/helper',
         });
 
         expect(result).not.toBeNull();
         expect(result?.kind).toBe('to-alias');
-        expect(result?.nextSpecifier).toBe('@root/rr/ff/qq');
+        expect(result?.nextSpecifier).toBe('@root/components/utils/helper');
     });
 
     it('prefers alias found by folder-backward walk by default', () => {
-        const root = mkTempRoot();
-        const importer = path.join(root, 'src/rr/feature/importer.ts');
-        writeFile(importer, 'export {};');
-        writeFile(path.join(root, 'src/rr/ff/qq.ts'), 'export const qq = 1;');
+        const root = mkTempProjectFromFixture('parent-folder');
+        const importer = path.join(root, 'src/components/feature/importer.ts');
 
         const core = createPreferAliasOrRelativeCore({
             extensions: ['.ts'],
-            manualTsConfigs: [{ baseUrl: root, paths: { '@root/*': ['src/*'], '@rr/*': ['src/rr/*'] } }],
+            manualTsConfigs: [
+                { baseUrl: root, paths: { '@root/*': ['src/*'], '@components/*': ['src/components/*'] } },
+            ],
             useTsConfig: false,
         });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '../ff/qq',
+            specifier: '../utils/helper',
         });
 
         expect(result).not.toBeNull();
         expect(result?.kind).toBe('to-alias');
-        expect(result?.nextSpecifier).toBe('@rr/ff/qq');
+        expect(result?.nextSpecifier).toBe('@components/utils/helper');
     });
 
     it('converts alias to shortest stable relative path', () => {

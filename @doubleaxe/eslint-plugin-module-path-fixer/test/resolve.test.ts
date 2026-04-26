@@ -281,4 +281,29 @@ describe('ImportResolver', () => {
 
         expect(resolved).toBeNull();
     });
+
+    it('resolves imports through directory symlink', () => {
+        const root = mkTempRoot();
+
+        const realDir = path.join(root, 'real');
+        fs.mkdirSync(realDir, { recursive: true });
+        fs.writeFileSync(path.join(realDir, 'target.ts'), 'export const value = 1;');
+
+        const linkDir = path.join(root, 'link');
+        fs.symlinkSync(realDir, linkDir, 'dir');
+
+        const importerFile = path.join(root, 'importer.ts');
+        fs.writeFileSync(importerFile, "import { value } from './link/target';");
+
+        const resolver = createImportResolver();
+        const resolved = resolver.resolve({
+            importerFile,
+            specifier: './link/target',
+            extensions: ['.ts'],
+        });
+
+        expect(resolved).not.toBeNull();
+        const resolvedRealPath = fs.realpathSync(resolved!.resolvedFile);
+        expect(resolvedRealPath).toBe(path.normalize(path.join(realDir, 'target.ts')));
+    });
 });

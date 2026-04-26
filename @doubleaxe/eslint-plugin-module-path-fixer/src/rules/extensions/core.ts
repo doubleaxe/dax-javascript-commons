@@ -7,6 +7,7 @@ import {
     hasExplicitExtension,
     removeExplicitExtension,
 } from '../../resolve.js';
+import { buildResolveInput, normalizePathForCompare } from '../utils.js';
 import type { ExtensionsCoreOptions, ExtensionsDecision, ExtensionsInput, ResolverLike } from './types.js';
 
 type NormalizedCoreOptions = {
@@ -26,11 +27,6 @@ const DEFAULT_EXTENSION_MAPPING: Readonly<Record<string, string>> = {
     mts: 'mjs',
     cts: 'cjs',
 };
-
-function normalizePathForCompare(value: string, caseInsensitive: boolean): string {
-    const normalized = path.normalize(value);
-    return caseInsensitive ? normalized.toLowerCase() : normalized;
-}
 
 function normalizeMode(value: string | undefined, fallback: 'always' | 'never'): 'always' | 'never' {
     if (value === 'always' || value === 'never') {
@@ -93,30 +89,6 @@ function addIndexSegment(specifierWithoutExtension: string): string {
     }
 
     return `${specifierWithoutExtension}/index`;
-}
-
-function buildResolveInput(
-    input: ExtensionsInput,
-    options: NormalizedCoreOptions,
-    specifier: string
-): {
-    caseInsensitive?: boolean;
-    extensions?: readonly string[];
-    importerFile: string;
-    manualTsConfigs?: ExtensionsCoreOptions['manualTsConfigs'];
-    specifier: string;
-    usePackageJson?: boolean;
-    useTsConfig?: boolean;
-} {
-    return {
-        importerFile: input.importerFile,
-        specifier,
-        extensions: options.extensions,
-        caseInsensitive: options.caseInsensitive,
-        usePackageJson: options.usePackageJson,
-        useTsConfig: options.useTsConfig,
-        manualTsConfigs: options.manualTsConfigs,
-    };
 }
 
 function splitSpecifier(specifier: string): { extension: string; withoutExtension: string } {

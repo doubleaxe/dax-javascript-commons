@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 
 import { createImportResolver } from '../../resolve.js';
+import { buildResolveInput, normalizePathForCompare } from '../utils.js';
 import { collectAliasCandidatesForResolvedImport } from './alias-candidates.js';
 import type {
     PreferAliasOrRelativeCoreOptions,
@@ -25,11 +26,6 @@ function normalizeParentFolderAliasDepth(depth: number | undefined): number {
     }
 
     return Math.trunc(depth);
-}
-
-function normalizePathForCompare(value: string, caseInsensitive: boolean): string {
-    const normalized = path.normalize(value);
-    return caseInsensitive ? normalized.toLowerCase() : normalized;
 }
 
 function toPosix(value: string): string {
@@ -175,30 +171,6 @@ function buildRelativeCandidates(importerFile: string, resolvedFile: string): st
     return [...new Set(candidates)].sort(compareByLengthThenLex);
 }
 
-function buildResolveInput(
-    input: PreferAliasOrRelativeInput,
-    options: NormalizedCoreOptions,
-    specifier: string
-): {
-    caseInsensitive?: boolean;
-    extensions?: readonly string[];
-    importerFile: string;
-    manualTsConfigs?: PreferAliasOrRelativeCoreOptions['manualTsConfigs'];
-    specifier: string;
-    usePackageJson?: boolean;
-    useTsConfig?: boolean;
-} {
-    return {
-        importerFile: input.importerFile,
-        specifier,
-        extensions: options.extensions,
-        caseInsensitive: options.caseInsensitive,
-        usePackageJson: options.usePackageJson,
-        useTsConfig: options.useTsConfig,
-        manualTsConfigs: options.manualTsConfigs,
-    };
-}
-
 export class PreferAliasOrRelativeCore {
     private readonly options: NormalizedCoreOptions;
     private readonly resolver: ResolverLike;
@@ -228,7 +200,9 @@ export class PreferAliasOrRelativeCore {
             ? normalizeRelativeSpecifier(input.specifier)
             : input.specifier;
         const normalizedInput = { ...input, specifier: normalizedSpecifier };
-        const resolved = this.resolver.resolve(buildResolveInput(normalizedInput, this.options, normalizedInput.specifier));
+        const resolved = this.resolver.resolve(
+            buildResolveInput(normalizedInput, this.options, normalizedInput.specifier)
+        );
         if (!resolved) {
             return null;
         }

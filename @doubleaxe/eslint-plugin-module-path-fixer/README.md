@@ -134,20 +134,20 @@ import { another } from './another';
 
 ```ts
 // before
-import { qq } from '../ff/qq';
+import { helper } from '../utils/helper';
 
 // after
-import { qq } from '@root/rr/ff/qq';
+import { helper } from '@root/components/utils/helper';
 ```
 
 `folderAlias: 'never'` with a threshold that blocks the fallback:
 
 ```ts
 // before
-import { qq } from '../ff/qq';
+import { helper } from '../utils/helper';
 
 // after
-import { qq } from '../ff/qq';
+import { helper } from '../utils/helper';
 ```
 
 Alias to relative conversion:
