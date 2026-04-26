@@ -6,17 +6,18 @@ import {
     getResolvedExtension,
     hasExplicitExtension,
     removeExplicitExtension,
+    type ResolverLike,
 } from '../../resolve.js';
 import { buildResolveInput, normalizePathForCompare } from '../utils.js';
-import type { ExtensionsCoreOptions, ExtensionsDecision, ExtensionsInput, ResolverLike } from './types.js';
+import type { ExtensionsCoreOptions, ExtensionsDecision, ExtensionsInput } from './types.js';
 
 type NormalizedCoreOptions = {
     caseInsensitive?: boolean;
-    extension: 'always' | 'never';
     extensionMapping: Readonly<Record<string, string>>;
     extensions?: readonly string[];
-    index: 'always' | 'never';
     manualTsConfigs?: ExtensionsCoreOptions['manualTsConfigs'];
+    preferDirectoryIndex?: boolean;
+    preferExtension?: boolean;
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };
@@ -27,14 +28,6 @@ const DEFAULT_EXTENSION_MAPPING: Readonly<Record<string, string>> = {
     mts: 'mjs',
     cts: 'cjs',
 };
-
-function normalizeMode(value: string | undefined, fallback: 'always' | 'never'): 'always' | 'never' {
-    if (value === 'always' || value === 'never') {
-        return value;
-    }
-
-    return fallback;
-}
 
 function normalizeExtensionToken(value: string): string {
     const withoutDot = value.startsWith('.') ? value.slice(1) : value;
@@ -127,8 +120,8 @@ export class ExtensionsCore {
 
     public constructor(options: ExtensionsCoreOptions = {}, resolver?: ResolverLike) {
         this.options = {
-            extension: normalizeMode(options.extension, 'never'),
-            index: normalizeMode(options.index, 'never'),
+            preferExtension: options.preferExtension ?? false,
+            preferDirectoryIndex: options.preferDirectoryIndex ?? false,
             extensionMapping: normalizeExtensionMapping(options.extensionMapping),
             caseInsensitive: options.caseInsensitive,
             extensions: options.extensions,
@@ -179,10 +172,12 @@ export class ExtensionsCore {
 
         const isIndexResolvedFile = path.basename(resolvedFile, path.extname(resolvedFile)) === 'index';
         if (isIndexResolvedFile) {
-            normalized = this.options.index === 'always' ? addIndexSegment(normalized) : stripIndexSegment(normalized);
+            normalized = this.options.preferDirectoryIndex
+                ? addIndexSegment(normalized)
+                : stripIndexSegment(normalized);
         }
 
-        if (this.options.extension === 'never') {
+        if (!this.options.preferExtension) {
             return normalized;
         }
 
@@ -200,7 +195,7 @@ export class ExtensionsCore {
             );
         }
 
-        if (this.options.extension !== 'always') {
+        if (!this.options.preferExtension) {
             return false;
         }
 

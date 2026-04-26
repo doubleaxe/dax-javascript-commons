@@ -1,13 +1,12 @@
 import * as path from 'node:path';
 
-import { createImportResolver } from '../../resolve.js';
+import { createImportResolver, type ResolverLike } from '../../resolve.js';
 import { buildResolveInput, normalizePathForCompare } from '../utils.js';
 import { collectAliasCandidatesForResolvedImport } from './alias-candidates.js';
 import type {
     PreferAliasOrRelativeCoreOptions,
     PreferAliasOrRelativeDecision,
     PreferAliasOrRelativeInput,
-    ResolverLike,
 } from './types.js';
 
 type NormalizedCoreOptions = {
@@ -196,10 +195,24 @@ export class PreferAliasOrRelativeCore {
     }
 
     public evaluate(input: PreferAliasOrRelativeInput): null | PreferAliasOrRelativeDecision {
-        const normalizedSpecifier = input.specifier.startsWith('.')
-            ? normalizeRelativeSpecifier(input.specifier)
-            : input.specifier;
-        const normalizedInput = { ...input, specifier: normalizedSpecifier };
+        const isLocalRelative = input.specifier.startsWith('./');
+        const isParentRelative = input.specifier.startsWith('..');
+        const isPackageImport = input.specifier.startsWith('#');
+
+        let normalizedSpecifier: string;
+        let normalizedInput: PreferAliasOrRelativeInput;
+
+        if (isPackageImport) {
+            normalizedSpecifier = normalizeRelativeSpecifier(input.specifier);
+            normalizedInput = { ...input, specifier: normalizedSpecifier };
+        } else if (input.specifier.startsWith('.')) {
+            normalizedSpecifier = normalizeRelativeSpecifier(input.specifier);
+            normalizedInput = { ...input, specifier: normalizedSpecifier };
+        } else {
+            normalizedSpecifier = input.specifier;
+            normalizedInput = input;
+        }
+
         const resolved = this.resolver.resolve(
             buildResolveInput(normalizedInput, this.options, normalizedInput.specifier)
         );
@@ -208,7 +221,34 @@ export class PreferAliasOrRelativeCore {
         }
 
         if (normalizedInput.specifier.startsWith('.')) {
-            return this.tryConvertRelativeToAlias(normalizedInput, resolved);
+            const result = this.tryConvertRelativeToAlias(normalizedInput, resolved);
+            if (result) {
+                return result;
+            }
+            const needsNormalization = (isLocalRelative || isParentRelative) && normalizedSpecifier !== input.specifier;
+            if (needsNormalization) {
+                return {
+                    kind: 'to-relative',
+                    nextSpecifier: normalizedSpecifier,
+                    resolved,
+                };
+            }
+            return null;
+        }
+
+        if (isPackageImport) {
+            const result = this.tryConvertAliasToRelative(normalizedInput, resolved);
+            if (result) {
+                return result;
+            }
+            if (normalizedSpecifier !== input.specifier) {
+                return {
+                    kind: 'to-relative',
+                    nextSpecifier: normalizedSpecifier,
+                    resolved,
+                };
+            }
+            return null;
         }
 
         return this.tryConvertAliasToRelative(normalizedInput, resolved);

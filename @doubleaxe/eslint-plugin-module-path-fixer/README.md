@@ -2,7 +2,7 @@
 
 ESLint plugin for deterministic module specifier normalization.
 
-The plugin resolves real import targets and applies autofixes only when target resolution remains semantically equivalent. It is built for projects that combine:
+The plugin resolves real import targets and applies autofixes only when target resolution remains semantically equivalent. It is designed to work with:
 
 - relative paths (`./`, `../`)
 - `tsconfig.json` / `jsconfig.json` path aliases
@@ -13,8 +13,6 @@ The plugin ships two autofixable rules:
 
 - `prefer-alias-or-relative`
 - `extensions`
-
-All rule options are optional. Both rules apply internal defaults when options are omitted.
 
 - Autofix: yes
 - Scope:
@@ -51,24 +49,20 @@ type ModulePathFixerSettings = {
 };
 ```
 
+- `extensions` - which extensions to resolve, default is '.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'
+- `caseInsensitive` - defaults to `false` for Linux, `true` for Windows and MacOS
+- `usePackageJson` - defaults to `true`, pass `false` to disable
+- `useTsConfig` - defaults to `true`, pass `false` to disable
+- `alias` - global alias list, in tsconfig format, it is used to resolve aliases in addition to `tsconfig.json` and `package.json`, works even if `useTsConfig` is `false`
+
 ## Rule: `prefer-alias-or-relative`
 
-Normalizes imports between alias and relative forms after resolving the target and normalizing the specifier path.
+Normalizes imports between alias and relative forms after resolving the target and normalizing the specifier path. Before any alias decision, the rule normalizes relative inputs with POSIX path normalization. Automatically fixes not normalized paths.
 
 The rule works in two directions:
 
 - Relative specifiers may be rewritten to aliases when the resolved file has a matching alias.
 - Alias specifiers may be rewritten to the shortest stable relative form when that form resolves to the same file.
-
-Before any alias decision, the rule normalizes relative inputs with POSIX path normalization. For example:
-
-```ts
-// input
-import mod from '../folder/../ff/qq';
-
-// normalized before alias lookup
-import mod from '../ff/qq';
-```
 
 ### Options (all optional)
 

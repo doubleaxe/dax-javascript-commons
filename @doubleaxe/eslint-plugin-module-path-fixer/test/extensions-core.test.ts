@@ -56,8 +56,8 @@ describe('ExtensionsCore', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
 
         const core = createExtensionsCore({
-            extension: 'always',
-            index: 'never',
+            preferExtension: true,
+            preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
             extensionMapping: { ts: 'js' },
         });
@@ -78,8 +78,8 @@ describe('ExtensionsCore', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
 
         const core = createExtensionsCore({
-            extension: 'never',
-            index: 'never',
+            preferExtension: false,
+            preferDirectoryIndex: false,
             extensions: ['.ts'],
         });
 
@@ -99,8 +99,8 @@ describe('ExtensionsCore', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
 
         const core = createExtensionsCore({
-            extension: 'always',
-            index: 'always',
+            preferExtension: true,
+            preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
             extensionMapping: { ts: 'js' },
         });
@@ -121,8 +121,8 @@ describe('ExtensionsCore', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
 
         const core = createExtensionsCore({
-            extension: 'never',
-            index: 'never',
+            preferExtension: false,
+            preferDirectoryIndex: false,
             extensions: ['.ts'],
         });
 
@@ -142,8 +142,8 @@ describe('ExtensionsCore', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
 
         const core = createExtensionsCore({
-            extension: 'never',
-            index: 'never',
+            preferExtension: false,
+            preferDirectoryIndex: false,
             extensions: ['.ts'],
         });
 
@@ -160,8 +160,8 @@ describe('ExtensionsCore', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
 
         const core = createExtensionsCore({
-            extension: 'never',
-            index: 'never',
+            preferExtension: false,
+            preferDirectoryIndex: false,
             extensions: ['.ts'],
         });
 

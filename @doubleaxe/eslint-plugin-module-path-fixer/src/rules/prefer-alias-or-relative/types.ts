@@ -1,4 +1,4 @@
-import type { ManualTsConfigEntry, ResolvedImport, ResolveImportOptions } from '../../resolve.js';
+import type { ManualTsConfigEntry, ResolvedImport } from '../../resolve.js';
 
 export type PreferAliasOrRelativeCoreOptions = {
     caseInsensitive?: boolean;
@@ -21,8 +21,4 @@ export type PreferAliasOrRelativeDecision = {
     kind: PreferAliasOrRelativeDecisionKind;
     nextSpecifier: string;
     resolved: ResolvedImport;
-};
-
-export type ResolverLike = {
-    resolve: (options: ResolveImportOptions) => null | ResolvedImport;
 };

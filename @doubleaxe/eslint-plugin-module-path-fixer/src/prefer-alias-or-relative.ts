@@ -71,7 +71,7 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
         const ruleOptions = context.options[0] ?? {};
 
         const core = createPreferAliasOrRelativeCore({
-            preferFolderAlias: (ruleOptions.folderAlias ?? 'always') === 'always',
+            preferFolderAlias: (ruleOptions.folderAlias ?? 'always') !== 'never',
             parentFolderAliasDepth: ruleOptions.parentFolderAliasDepth,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,

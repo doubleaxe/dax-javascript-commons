@@ -1,14 +1,12 @@
-import type { ManualTsConfigEntry, ResolvedImport, ResolveImportOptions } from '../../resolve.js';
-
-export type ExtensionsMode = 'always' | 'never';
+import type { ManualTsConfigEntry, ResolvedImport } from '../../resolve.js';
 
 export type ExtensionsCoreOptions = {
     caseInsensitive?: boolean;
-    extension?: ExtensionsMode;
     extensionMapping?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
-    index?: ExtensionsMode;
     manualTsConfigs?: readonly ManualTsConfigEntry[];
+    preferDirectoryIndex?: boolean;
+    preferExtension?: boolean;
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };
@@ -25,8 +23,4 @@ export type ExtensionsDecision = {
     nextSpecifier: string;
     reason: ExtensionsDecisionReason;
     resolved: ResolvedImport;
-};
-
-export type ResolverLike = {
-    resolve: (options: ResolveImportOptions) => null | ResolvedImport;
 };

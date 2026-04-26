@@ -275,7 +275,11 @@ function toResolveCacheKey(options: EffectiveResolveOptions): string {
     ].join('\u0000');
 }
 
-export class ImportResolver {
+export type ResolverLike = {
+    resolve: (options: ResolveImportOptions) => null | ResolvedImport;
+};
+
+export class ImportResolver implements ResolverLike {
     private readonly options: ImportResolverOptions;
     private static readonly resolveCache = new LRUCache<string, { value: null | ResolvedImport }>({ max: 10_000 });
     private static readonly tsJsNearestCache = new LRUCache<string, { value: null | TsJsConfigCacheEntry }>({

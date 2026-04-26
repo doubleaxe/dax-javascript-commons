@@ -123,9 +123,9 @@ describe('ImportResolver', () => {
     });
 
     it('resolves manual tsconfig aliases from resolver options', () => {
-        const root = mkTempProjectFromFixture('manual');
+        const root = mkTempProjectFromFixture('relative');
         const importer = path.join(root, 'src/feature/importer.ts');
-        const target = path.join(root, 'src/shared/tool.ts');
+        const target = path.join(root, 'src/utils/helper.ts');
 
         const resolver = createImportResolver({
             manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
@@ -133,7 +133,7 @@ describe('ImportResolver', () => {
 
         const resolved = resolver.resolve({
             importerFile: importer,
-            specifier: '@manual/shared/tool',
+            specifier: '@manual/utils/helper',
             extensions: ['.ts'],
         });
 
@@ -169,9 +169,9 @@ describe('ImportResolver', () => {
     });
 
     it('resolves manual tsconfig entries even when useTsConfig is disabled', () => {
-        const root = mkTempProjectFromFixture('manual');
+        const root = mkTempProjectFromFixture('relative');
         const importer = path.join(root, 'src/feature/importer.ts');
-        const target = path.join(root, 'src/shared/tool.ts');
+        const target = path.join(root, 'src/utils/helper.ts');
 
         const resolver = createImportResolver({
             useTsConfig: false,
@@ -180,7 +180,7 @@ describe('ImportResolver', () => {
 
         const resolved = resolver.resolve({
             importerFile: importer,
-            specifier: '@manual/shared/tool',
+            specifier: '@manual/utils/helper',
             extensions: ['.ts'],
         });
 
@@ -190,9 +190,9 @@ describe('ImportResolver', () => {
     });
 
     it('resolves using matching entry from multiple manualTsConfigs', () => {
-        const root = mkTempProjectFromFixture('manual');
+        const root = mkTempProjectFromFixture('relative');
         const importer = path.join(root, 'src/feature/importer.ts');
-        const target = path.join(root, 'src/shared/tool.ts');
+        const target = path.join(root, 'src/utils/helper.ts');
 
         const resolver = createImportResolver({
             manualTsConfigs: [
@@ -203,7 +203,7 @@ describe('ImportResolver', () => {
 
         const resolved = resolver.resolve({
             importerFile: importer,
-            specifier: '@manual/shared/tool',
+            specifier: '@manual/utils/helper',
             extensions: ['.ts'],
         });
 
@@ -213,16 +213,16 @@ describe('ImportResolver', () => {
     });
 
     it('caches resolved import result and recomputes after clearCaches', () => {
-        const root = mkTempProjectFromFixture('cache');
+        const root = mkTempProjectFromFixture('relative');
         const importer = path.join(root, 'src/feature/importer.ts');
-        const tsTarget = path.join(root, 'src/utils/value.ts');
-        const jsTarget = path.join(root, 'src/utils/value.js');
+        const tsTarget = path.join(root, 'src/core/value.ts');
+        const jsTarget = path.join(root, 'src/core/value.js');
 
         const resolver = createImportResolver();
 
         const first = resolver.resolve({
             importerFile: importer,
-            specifier: '../utils/value',
+            specifier: '../core/value',
             extensions: ['.ts', '.js'],
         });
 
@@ -233,7 +233,7 @@ describe('ImportResolver', () => {
 
         const second = resolver.resolve({
             importerFile: importer,
-            specifier: '../utils/value',
+            specifier: '../core/value',
             extensions: ['.ts', '.js'],
         });
 
@@ -244,7 +244,7 @@ describe('ImportResolver', () => {
 
         const third = resolver.resolve({
             importerFile: importer,
-            specifier: '../utils/value',
+            specifier: '../core/value',
             extensions: ['.ts', '.js'],
         });
 
@@ -286,24 +286,43 @@ describe('ImportResolver', () => {
         const root = mkTempRoot();
 
         const realDir = path.join(root, 'real');
-        fs.mkdirSync(realDir, { recursive: true });
-        fs.writeFileSync(path.join(realDir, 'target.ts'), 'export const value = 1;');
+        copyDirectoryRecursive(path.join(fixturesRoot, 'relative'), realDir);
 
         const linkDir = path.join(root, 'link');
         fs.symlinkSync(realDir, linkDir, 'dir');
 
-        const importerFile = path.join(root, 'importer.ts');
-        fs.writeFileSync(importerFile, "import { value } from './link/target';");
+        const importerReal = path.join(realDir, 'src/feature/importer.ts');
+        const targetReal = path.join(realDir, 'src/utils/helper.ts');
+        const importerLink = path.join(linkDir, 'src/feature/importer.ts');
+        const targetLink = path.join(linkDir, 'src/utils/helper.ts');
 
+        // from link to link
         const resolver = createImportResolver();
-        const resolved = resolver.resolve({
-            importerFile,
-            specifier: './link/target',
+        const first = resolver.resolve({
+            importerFile: importerLink,
+            specifier: '../utils/helper',
             extensions: ['.ts'],
         });
 
-        expect(resolved).not.toBeNull();
-        const resolvedRealPath = fs.realpathSync(resolved!.resolvedFile);
-        expect(resolvedRealPath).toBe(path.normalize(path.join(realDir, 'target.ts')));
+        expect(first).not.toBeNull();
+        expect(first?.resolvedFile).toBe(path.normalize(targetLink));
+
+        // from real to link
+        const second = resolver.resolve({
+            importerFile: importerReal,
+            specifier: '../../../link/src/utils/helper',
+            extensions: ['.ts'],
+        });
+        expect(second).not.toBeNull();
+        expect(second?.resolvedFile).toBe(path.normalize(targetLink));
+
+        // from link to real
+        const third = resolver.resolve({
+            importerFile: importerLink,
+            specifier: '../../../real/src/utils/helper',
+            extensions: ['.ts'],
+        });
+        expect(third).not.toBeNull();
+        expect(third?.resolvedFile).toBe(path.normalize(targetReal));
     });
 });
