@@ -11,11 +11,6 @@ export type ExtensionsCoreOptions = {
     useTsConfig?: boolean;
 };
 
-export type ExtensionsInput = {
-    importerFile: string;
-    specifier: string;
-};
-
 export type ExtensionsDecisionReason = 'extension-and-index' | 'extension' | 'index';
 
 export type ExtensionsDecision = {

@@ -13,6 +13,7 @@ import {
 
 type PreferAliasOrRelativeRuleOptions = {
     alias?: readonly ManualTsConfigEntry[];
+    childFolderAliasDepth?: number;
     folderAlias?: 'always' | 'never';
     parentFolderAliasDepth?: number;
 };
@@ -27,6 +28,7 @@ const schema: JSONSchema4 = {
     properties: {
         folderAlias: { type: 'string', enum: ['always', 'never'] },
         parentFolderAliasDepth: { type: 'integer' },
+        childFolderAliasDepth: { type: 'integer' },
         alias: {
             type: 'array',
             items: {
@@ -73,6 +75,7 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
         const core = createPreferAliasOrRelativeCore({
             preferFolderAlias: (ruleOptions.folderAlias ?? 'always') !== 'never',
             parentFolderAliasDepth: ruleOptions.parentFolderAliasDepth,
+            childFolderAliasDepth: ruleOptions.childFolderAliasDepth,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
             caseInsensitive: settings.caseInsensitive,

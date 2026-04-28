@@ -1,15 +1,17 @@
 import * as path from 'node:path';
 
+import { normalizePath } from '../../normalizer.js';
 import {
     addExtension,
     createImportResolver,
     getResolvedExtension,
     hasExplicitExtension,
     removeExplicitExtension,
+    type ResolveInput,
     type ResolverLike,
 } from '../../resolve.js';
-import { buildResolveInput, normalizePathForCompare } from '../utils.js';
-import type { ExtensionsCoreOptions, ExtensionsDecision, ExtensionsInput } from './types.js';
+import { buildNextResolveInput } from '../../util.js';
+import type { ExtensionsCoreOptions, ExtensionsDecision } from './types.js';
 
 type NormalizedCoreOptions = {
     caseInsensitive?: boolean;
@@ -133,6 +135,7 @@ export class ExtensionsCore {
         this.resolver =
             resolver ??
             createImportResolver({
+                extensions: options.extensions,
                 caseInsensitive: options.caseInsensitive,
                 usePackageJson: options.usePackageJson,
                 useTsConfig: options.useTsConfig,
@@ -140,8 +143,8 @@ export class ExtensionsCore {
             });
     }
 
-    public evaluate(input: ExtensionsInput): ExtensionsDecision | null {
-        const resolved = this.resolver.resolve(buildResolveInput(input, this.options, input.specifier));
+    public evaluate(input: ResolveInput): ExtensionsDecision | null {
+        const resolved = this.resolver.resolve(input);
         if (!resolved) {
             return null;
         }
@@ -184,14 +187,14 @@ export class ExtensionsCore {
         return addExtension(normalized, importExtension);
     }
 
-    private isSafeRewrite(input: ExtensionsInput, originalResolvedFile: string, nextSpecifier: string): boolean {
-        const directNextResolved = this.resolver.resolve(buildResolveInput(input, this.options, nextSpecifier));
+    private isSafeRewrite(input: ResolveInput, originalResolvedFile: string, nextSpecifier: string): boolean {
+        const directNextResolved = this.resolver.resolve(buildNextResolveInput(input, nextSpecifier));
         const caseInsensitive = this.options.caseInsensitive ?? false;
 
         if (directNextResolved) {
             return (
-                normalizePathForCompare(directNextResolved.resolvedFile, caseInsensitive) ===
-                normalizePathForCompare(originalResolvedFile, caseInsensitive)
+                normalizePath(directNextResolved.resolvedFile, caseInsensitive) ===
+                normalizePath(originalResolvedFile, caseInsensitive)
             );
         }
 
@@ -207,16 +210,14 @@ export class ExtensionsCore {
         }
 
         const extensionlessCandidate = removeExplicitExtension(nextSpecifier);
-        const extensionlessResolved = this.resolver.resolve(
-            buildResolveInput(input, this.options, extensionlessCandidate)
-        );
+        const extensionlessResolved = this.resolver.resolve(buildNextResolveInput(input, extensionlessCandidate));
         if (!extensionlessResolved) {
             return false;
         }
 
         return (
-            normalizePathForCompare(extensionlessResolved.resolvedFile, caseInsensitive) ===
-            normalizePathForCompare(originalResolvedFile, caseInsensitive)
+            normalizePath(extensionlessResolved.resolvedFile, caseInsensitive) ===
+            normalizePath(originalResolvedFile, caseInsensitive)
         );
     }
 }

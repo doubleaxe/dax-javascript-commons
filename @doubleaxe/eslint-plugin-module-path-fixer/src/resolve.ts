@@ -7,6 +7,8 @@ import { LRUCache } from 'lru-cache';
 import type { ConfigLoaderResult, ConfigLoaderSuccessResult, MatchPath } from 'tsconfig-paths';
 import { createMatchPath, loadConfig } from 'tsconfig-paths';
 
+import { normalizePath } from './normalizer.js';
+
 const DEFAULT_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'] as const;
 const TS_OR_JS_CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'] as const;
 const PACKAGE_JSON_NAME = 'package.json';
@@ -40,46 +42,25 @@ export type ManualTsConfigEntry = {
     paths: Readonly<Record<string, readonly string[]>>;
 };
 
+export type ResolveInput = {
+    importerFile: string;
+    specifier: string;
+};
+
 export type ResolveImportOptions = {
     caseInsensitive?: boolean;
     extensions?: readonly string[];
-    importerFile: string;
     manualTsConfigs?: readonly ManualTsConfigEntry[];
-    specifier: string;
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };
 
-export type ImportResolverOptions = {
-    caseInsensitive?: boolean;
-    manualTsConfigs?: readonly ManualTsConfigEntry[];
-    usePackageJson?: boolean;
-    useTsConfig?: boolean;
-};
+type NormaizedResolveImportOptions = Required<ResolveImportOptions>;
 
 export type PackageJsonContent = {
     [key: string]: unknown;
     imports?: Record<string, unknown>;
 };
-
-type EffectiveResolveOptions = {
-    caseInsensitive: boolean;
-    extensions: readonly string[];
-    importerFile: string;
-    manualTsConfigs: readonly NormalizedManualTsConfigEntry[];
-    specifier: string;
-    usePackageJson: boolean;
-    useTsConfig: boolean;
-};
-
-type NormalizedManualTsConfigEntry = {
-    baseUrl: string;
-    paths: Readonly<Record<string, readonly string[]>>;
-};
-
-function normalizePath(filePath: string): string {
-    return path.normalize(filePath);
-}
 
 function getDefaultCaseInsensitive(): boolean {
     return process.platform === 'win32' || process.platform === 'darwin';
@@ -240,7 +221,7 @@ function isManualTsConfigEntry(value: unknown): value is ManualTsConfigEntry {
 
 function normalizeManualTsConfigs(
     manualTsConfigs: readonly ManualTsConfigEntry[] | undefined
-): readonly NormalizedManualTsConfigEntry[] {
+): readonly ManualTsConfigEntry[] {
     return (manualTsConfigs ?? [])
         .filter((entry) => isManualTsConfigEntry(entry))
         .map((entry) => ({
@@ -250,7 +231,7 @@ function normalizeManualTsConfigs(
         .filter((entry) => Object.keys(entry.paths).length > 0);
 }
 
-function serializeManualTsConfigs(configs: readonly NormalizedManualTsConfigEntry[]): string {
+function serializeManualTsConfigs(configs: readonly ManualTsConfigEntry[]): string {
     return configs
         .map((entry) => {
             const serializedPaths = Object.keys(entry.paths)
@@ -263,10 +244,10 @@ function serializeManualTsConfigs(configs: readonly NormalizedManualTsConfigEntr
         .join('|');
 }
 
-function toResolveCacheKey(options: EffectiveResolveOptions): string {
+function toResolveCacheKey(input: ResolveInput, options: NormaizedResolveImportOptions): string {
     return [
-        normalizePath(options.importerFile),
-        options.specifier,
+        input.importerFile,
+        input.specifier,
         options.extensions.join(','),
         options.caseInsensitive ? 'ci:1' : 'ci:0',
         options.useTsConfig ? 'ts:1' : 'ts:0',
@@ -276,11 +257,11 @@ function toResolveCacheKey(options: EffectiveResolveOptions): string {
 }
 
 export type ResolverLike = {
-    resolve: (options: ResolveImportOptions) => null | ResolvedImport;
+    resolve: (input: ResolveInput) => null | ResolvedImport;
 };
 
 export class ImportResolver implements ResolverLike {
-    private readonly options: ImportResolverOptions;
+    private readonly options: NormaizedResolveImportOptions;
     private static readonly resolveCache = new LRUCache<string, { value: null | ResolvedImport }>({ max: 10_000 });
     private static readonly tsJsNearestCache = new LRUCache<string, { value: null | TsJsConfigCacheEntry }>({
         max: 5_000,
@@ -290,20 +271,29 @@ export class ImportResolver implements ResolverLike {
     });
     private static readonly manualAliasMatchPathCache = new LRUCache<string, MatchPath>({ max: 2_500 });
 
-    public constructor(options: ImportResolverOptions = {}) {
-        this.options = options;
+    public constructor(options: ResolveImportOptions = {}) {
+        this.options = {
+            extensions: options.extensions ?? DEFAULT_EXTENSIONS,
+            caseInsensitive: options.caseInsensitive ?? getDefaultCaseInsensitive(),
+            useTsConfig: options.useTsConfig ?? true,
+            usePackageJson: options.usePackageJson ?? true,
+            manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs),
+        };
     }
 
-    public resolve(options: ResolveImportOptions): null | ResolvedImport {
-        const effectiveOptions = this.toEffectiveResolveOptions(options);
-        const key = toResolveCacheKey(effectiveOptions);
+    public resolve(input: ResolveInput): null | ResolvedImport {
+        const normalizedInput = {
+            importerFile: normalizePath(input.importerFile),
+            specifier: normalizePath(input.specifier),
+        };
+        const key = toResolveCacheKey(normalizedInput, this.options);
         const cached = ImportResolver.resolveCache.get(key);
 
         if (cached !== undefined) {
             return cached.value;
         }
 
-        const resolved = this.resolveUncached(effectiveOptions);
+        const resolved = this.resolveUncached(input);
         ImportResolver.resolveCache.set(key, { value: resolved });
 
         return resolved;
@@ -344,21 +334,10 @@ export class ImportResolver implements ResolverLike {
         ImportResolver.manualAliasMatchPathCache.clear();
     }
 
-    private toEffectiveResolveOptions(options: ResolveImportOptions): EffectiveResolveOptions {
-        return {
-            importerFile: normalizePath(options.importerFile),
-            specifier: options.specifier,
-            extensions: options.extensions ?? DEFAULT_EXTENSIONS,
-            caseInsensitive: options.caseInsensitive ?? this.options.caseInsensitive ?? getDefaultCaseInsensitive(),
-            useTsConfig: options.useTsConfig ?? this.options.useTsConfig ?? true,
-            usePackageJson: options.usePackageJson ?? this.options.usePackageJson ?? true,
-            manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs ?? this.options.manualTsConfigs),
-        };
-    }
-
-    private resolveUncached(options: EffectiveResolveOptions): null | ResolvedImport {
-        const importerFile = options.importerFile;
-        const specifier = options.specifier;
+    private resolveUncached(input: ResolveInput): null | ResolvedImport {
+        const importerFile = input.importerFile;
+        const specifier = input.specifier;
+        const options = this.options;
         const extensions = options.extensions;
         const caseInsensitive = options.caseInsensitive;
 
@@ -463,7 +442,7 @@ export class ImportResolver implements ResolverLike {
         extensions: readonly string[],
         caseInsensitive: boolean,
         useTsConfig: boolean,
-        manualTsConfigs: readonly NormalizedManualTsConfigEntry[]
+        manualTsConfigs: readonly ManualTsConfigEntry[]
     ): { resolvedFile: string; tsJsConfig?: TsJsConfigCacheEntry } | null {
         const nearestConfig = useTsConfig ? this.getNearestTsJsConfig(importerFile) : null;
 
@@ -712,7 +691,7 @@ export class ImportResolver implements ResolverLike {
     }
 }
 
-export function createImportResolver(options: ImportResolverOptions = {}): ImportResolver {
+export function createImportResolver(options: ResolveImportOptions = {}): ImportResolver {
     return new ImportResolver(options);
 }
 

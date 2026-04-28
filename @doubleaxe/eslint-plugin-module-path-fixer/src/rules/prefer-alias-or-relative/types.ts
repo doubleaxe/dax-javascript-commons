@@ -2,6 +2,7 @@ import type { ManualTsConfigEntry, ResolvedImport } from '../../resolve.js';
 
 export type PreferAliasOrRelativeCoreOptions = {
     caseInsensitive?: boolean;
+    childFolderAliasDepth?: number;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     parentFolderAliasDepth?: number;
@@ -10,12 +11,7 @@ export type PreferAliasOrRelativeCoreOptions = {
     useTsConfig?: boolean;
 };
 
-export type PreferAliasOrRelativeInput = {
-    importerFile: string;
-    specifier: string;
-};
-
-export type PreferAliasOrRelativeDecisionKind = 'to-alias' | 'to-relative';
+export type PreferAliasOrRelativeDecisionKind = 'normalize' | 'to-alias' | 'to-relative';
 
 export type PreferAliasOrRelativeDecision = {
     kind: PreferAliasOrRelativeDecisionKind;

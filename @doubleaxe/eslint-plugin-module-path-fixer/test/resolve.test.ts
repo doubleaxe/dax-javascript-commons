@@ -56,11 +56,10 @@ describe('ImportResolver', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
         const target = path.join(root, 'src/utils/helper.ts');
 
-        const resolver = createImportResolver();
+        const resolver = createImportResolver({ extensions: ['.ts'] });
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '../utils/helper',
-            extensions: ['.ts'],
         });
 
         expect(resolved).not.toBeNull();
@@ -75,11 +74,10 @@ describe('ImportResolver', () => {
         const siblingFile = path.join(root, 'src/feature/another.ts');
         const target = path.join(root, 'src/utils/tool.ts');
 
-        const resolver = createImportResolver();
+        const resolver = createImportResolver({ extensions: ['.ts'] });
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '@app/utils/tool',
-            extensions: ['.ts'],
         });
 
         expect(resolved).not.toBeNull();
@@ -102,11 +100,10 @@ describe('ImportResolver', () => {
         const siblingFile = path.join(root, 'src/feature/another.ts');
         const target = path.join(root, 'src/core/index.ts');
 
-        const resolver = createImportResolver();
+        const resolver = createImportResolver({ extensions: ['.ts'] });
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '#core',
-            extensions: ['.ts'],
         });
 
         expect(resolved).not.toBeNull();
@@ -128,13 +125,13 @@ describe('ImportResolver', () => {
         const target = path.join(root, 'src/utils/helper.ts');
 
         const resolver = createImportResolver({
+            extensions: ['.ts'],
             manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
         });
 
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '@manual/utils/helper',
-            extensions: ['.ts'],
         });
 
         expect(resolved).not.toBeNull();
@@ -146,11 +143,10 @@ describe('ImportResolver', () => {
         const aliasRoot = mkTempProjectFromFixture('alias');
         const aliasImporter = path.join(aliasRoot, 'src/feature/importer.ts');
 
-        const aliasResolver = createImportResolver({ useTsConfig: false });
+        const aliasResolver = createImportResolver({ extensions: ['.ts'], useTsConfig: false });
         const aliasResolved = aliasResolver.resolve({
             importerFile: aliasImporter,
             specifier: '@app/utils/tool',
-            extensions: ['.ts'],
         });
 
         expect(aliasResolved).toBeNull();
@@ -158,11 +154,10 @@ describe('ImportResolver', () => {
         const importsRoot = mkTempProjectFromFixture('imports');
         const importsImporter = path.join(importsRoot, 'src/feature/importer.ts');
 
-        const importsResolver = createImportResolver({ usePackageJson: false });
+        const importsResolver = createImportResolver({ extensions: ['.ts'], usePackageJson: false });
         const importsResolved = importsResolver.resolve({
             importerFile: importsImporter,
             specifier: '#core',
-            extensions: ['.ts'],
         });
 
         expect(importsResolved).toBeNull();
@@ -174,6 +169,7 @@ describe('ImportResolver', () => {
         const target = path.join(root, 'src/utils/helper.ts');
 
         const resolver = createImportResolver({
+            extensions: ['.ts'],
             useTsConfig: false,
             manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
         });
@@ -181,7 +177,6 @@ describe('ImportResolver', () => {
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '@manual/utils/helper',
-            extensions: ['.ts'],
         });
 
         expect(resolved).not.toBeNull();
@@ -195,6 +190,7 @@ describe('ImportResolver', () => {
         const target = path.join(root, 'src/utils/helper.ts');
 
         const resolver = createImportResolver({
+            extensions: ['.ts'],
             manualTsConfigs: [
                 { baseUrl: root, paths: { '@other/*': ['src/other/*'] } },
                 { baseUrl: root, paths: { '@manual/*': ['src/*'] } },
@@ -204,7 +200,6 @@ describe('ImportResolver', () => {
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '@manual/utils/helper',
-            extensions: ['.ts'],
         });
 
         expect(resolved).not.toBeNull();
@@ -218,12 +213,11 @@ describe('ImportResolver', () => {
         const tsTarget = path.join(root, 'src/core/value.ts');
         const jsTarget = path.join(root, 'src/core/value.js');
 
-        const resolver = createImportResolver();
+        const resolver = createImportResolver({ extensions: ['.ts', '.js'] });
 
         const first = resolver.resolve({
             importerFile: importer,
             specifier: '../core/value',
-            extensions: ['.ts', '.js'],
         });
 
         expect(first).not.toBeNull();
@@ -234,7 +228,6 @@ describe('ImportResolver', () => {
         const second = resolver.resolve({
             importerFile: importer,
             specifier: '../core/value',
-            extensions: ['.ts', '.js'],
         });
 
         expect(second).toBe(first);
@@ -245,7 +238,6 @@ describe('ImportResolver', () => {
         const third = resolver.resolve({
             importerFile: importer,
             specifier: '../core/value',
-            extensions: ['.ts', '.js'],
         });
 
         expect(third).not.toBeNull();
@@ -257,11 +249,10 @@ describe('ImportResolver', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
         const target = path.join(root, 'src/utils/helper.ts');
 
-        const resolver = createImportResolver({ caseInsensitive: true });
+        const resolver = createImportResolver({ caseInsensitive: true, extensions: ['.ts'] });
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '../Utils/Helper',
-            extensions: ['.ts'],
         });
 
         expect(resolved).not.toBeNull();
@@ -272,11 +263,10 @@ describe('ImportResolver', () => {
         const root = mkTempProjectFromFixture('relative');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const resolver = createImportResolver({ caseInsensitive: false });
+        const resolver = createImportResolver({ caseInsensitive: false, extensions: ['.ts'] });
         const resolved = resolver.resolve({
             importerFile: importer,
             specifier: '../Utils/Helper',
-            extensions: ['.ts'],
         });
 
         expect(resolved).toBeNull();
@@ -297,11 +287,10 @@ describe('ImportResolver', () => {
         const targetLink = path.join(linkDir, 'src/utils/helper.ts');
 
         // from link to link
-        const resolver = createImportResolver();
+        const resolver = createImportResolver({ extensions: ['.ts'] });
         const first = resolver.resolve({
             importerFile: importerLink,
             specifier: '../utils/helper',
-            extensions: ['.ts'],
         });
 
         expect(first).not.toBeNull();
@@ -311,7 +300,6 @@ describe('ImportResolver', () => {
         const second = resolver.resolve({
             importerFile: importerReal,
             specifier: '../../../link/src/utils/helper',
-            extensions: ['.ts'],
         });
         expect(second).not.toBeNull();
         expect(second?.resolvedFile).toBe(path.normalize(targetLink));
@@ -320,7 +308,6 @@ describe('ImportResolver', () => {
         const third = resolver.resolve({
             importerFile: importerLink,
             specifier: '../../../real/src/utils/helper',
-            extensions: ['.ts'],
         });
         expect(third).not.toBeNull();
         expect(third?.resolvedFile).toBe(path.normalize(targetReal));

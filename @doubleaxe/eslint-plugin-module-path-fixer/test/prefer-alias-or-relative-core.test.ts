@@ -77,7 +77,7 @@ describe('PreferAliasOrRelativeCore', () => {
         });
 
         expect(result).not.toBeNull();
-        expect(result?.kind).toBe('to-relative');
+        expect(result?.kind).toBe('normalize');
         expect(result?.nextSpecifier).toBe('./another');
     });
 

@@ -1,16 +1,14 @@
 import * as path from 'node:path';
 
-import { createImportResolver, type ResolverLike } from '../../resolve.js';
-import { buildResolveInput, normalizePathForCompare } from '../utils.js';
+import { normalizePath } from '../../normalizer.js';
+import { createImportResolver, type ResolvedImport, type ResolveInput, type ResolverLike } from '../../resolve.js';
+import { buildNextResolveInput } from '../../util.js';
 import { collectAliasCandidatesForResolvedImport } from './alias-candidates.js';
-import type {
-    PreferAliasOrRelativeCoreOptions,
-    PreferAliasOrRelativeDecision,
-    PreferAliasOrRelativeInput,
-} from './types.js';
+import type { PreferAliasOrRelativeCoreOptions, PreferAliasOrRelativeDecision } from './types.js';
 
 type NormalizedCoreOptions = {
     caseInsensitive?: boolean;
+    childFolderAliasDepth: number;
     extensions?: readonly string[];
     manualTsConfigs?: PreferAliasOrRelativeCoreOptions['manualTsConfigs'];
     parentFolderAliasDepth: number;
@@ -22,6 +20,14 @@ type NormalizedCoreOptions = {
 function normalizeParentFolderAliasDepth(depth: number | undefined): number {
     if (depth === undefined || Number.isNaN(depth) || !Number.isFinite(depth)) {
         return 0;
+    }
+
+    return Math.trunc(depth);
+}
+
+function normalizeChildFolderAliasDepth(depth: number | undefined): number {
+    if (depth === undefined || Number.isNaN(depth) || !Number.isFinite(depth)) {
+        return -1;
     }
 
     return Math.trunc(depth);
@@ -45,19 +51,6 @@ function compareByLengthThenLex(a: string, b: string): number {
     }
 
     return a.localeCompare(b);
-}
-
-function normalizeRelativeSpecifier(specifier: string): string {
-    const normalized = path.posix.normalize(specifier);
-    if (normalized === '.' || normalized.length === 0) {
-        return './';
-    }
-
-    if (normalized.startsWith('.')) {
-        return normalized;
-    }
-
-    return ensureRelativePrefix(normalized);
 }
 
 function toPosixPath(value: string): string {
@@ -180,6 +173,7 @@ export class PreferAliasOrRelativeCore {
             extensions: options.extensions,
             preferFolderAlias: options.preferFolderAlias ?? true,
             parentFolderAliasDepth: normalizeParentFolderAliasDepth(options.parentFolderAliasDepth),
+            childFolderAliasDepth: normalizeChildFolderAliasDepth(options.childFolderAliasDepth),
             usePackageJson: options.usePackageJson,
             useTsConfig: options.useTsConfig,
             manualTsConfigs: options.manualTsConfigs,
@@ -187,6 +181,7 @@ export class PreferAliasOrRelativeCore {
         this.resolver =
             resolver ??
             createImportResolver({
+                extensions: options.extensions,
                 caseInsensitive: options.caseInsensitive,
                 usePackageJson: options.usePackageJson,
                 useTsConfig: options.useTsConfig,
@@ -194,69 +189,38 @@ export class PreferAliasOrRelativeCore {
             });
     }
 
-    public evaluate(input: PreferAliasOrRelativeInput): null | PreferAliasOrRelativeDecision {
-        const isLocalRelative = input.specifier.startsWith('./');
-        const isParentRelative = input.specifier.startsWith('..');
-        const isPackageImport = input.specifier.startsWith('#');
-
-        let normalizedSpecifier: string;
-        let normalizedInput: PreferAliasOrRelativeInput;
-
-        if (isPackageImport) {
-            normalizedSpecifier = normalizeRelativeSpecifier(input.specifier);
-            normalizedInput = { ...input, specifier: normalizedSpecifier };
-        } else if (input.specifier.startsWith('.')) {
-            normalizedSpecifier = normalizeRelativeSpecifier(input.specifier);
-            normalizedInput = { ...input, specifier: normalizedSpecifier };
-        } else {
-            normalizedSpecifier = input.specifier;
-            normalizedInput = input;
-        }
-
-        const resolved = this.resolver.resolve(
-            buildResolveInput(normalizedInput, this.options, normalizedInput.specifier)
-        );
+    public evaluate(input: ResolveInput): null | PreferAliasOrRelativeDecision {
+        const specifier = input.specifier;
+        const normalizedSpecifier = normalizePath(specifier);
+        const resolved = this.resolver.resolve(input);
         if (!resolved) {
             return null;
         }
 
-        if (normalizedInput.specifier.startsWith('.')) {
-            const result = this.tryConvertRelativeToAlias(normalizedInput, resolved);
-            if (result) {
-                return result;
-            }
-            const needsNormalization = (isLocalRelative || isParentRelative) && normalizedSpecifier !== input.specifier;
-            if (needsNormalization) {
-                return {
-                    kind: 'to-relative',
-                    nextSpecifier: normalizedSpecifier,
-                    resolved,
-                };
-            }
-            return null;
+        let converted;
+        if (specifier.startsWith('.')) {
+            converted = this.tryConvertRelativeToAlias(input, resolved);
+        } else {
+            converted = this.tryConvertAliasToRelative(input, resolved);
         }
 
-        if (isPackageImport) {
-            const result = this.tryConvertAliasToRelative(normalizedInput, resolved);
-            if (result) {
-                return result;
-            }
-            if (normalizedSpecifier !== input.specifier) {
-                return {
-                    kind: 'to-relative',
-                    nextSpecifier: normalizedSpecifier,
-                    resolved,
-                };
-            }
-            return null;
+        if (converted) {
+            return converted;
         }
 
-        return this.tryConvertAliasToRelative(normalizedInput, resolved);
+        if (normalizedSpecifier !== specifier) {
+            return {
+                kind: 'normalize',
+                nextSpecifier: normalizedSpecifier,
+                resolved,
+            };
+        }
+        return null;
     }
 
     private tryConvertRelativeToAlias(
-        input: PreferAliasOrRelativeInput,
-        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>
+        input: ResolveInput,
+        resolved: ResolvedImport
     ): null | PreferAliasOrRelativeDecision {
         const aliases = collectAliasCandidatesForResolvedImport(resolved, {
             manualTsConfigs: this.options.manualTsConfigs,
@@ -302,20 +266,20 @@ export class PreferAliasOrRelativeCore {
     }
 
     private tryConvertAliasToRelative(
-        input: PreferAliasOrRelativeInput,
-        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>
+        input: ResolveInput,
+        resolved: ResolvedImport
     ): null | PreferAliasOrRelativeDecision {
         const relativeCandidates = buildRelativeCandidates(input.importerFile, resolved.resolvedFile);
 
         for (const relativeSpecifier of relativeCandidates) {
-            const relativeResolved = this.resolver.resolve(buildResolveInput(input, this.options, relativeSpecifier));
+            const relativeResolved = this.resolver.resolve(buildNextResolveInput(input, relativeSpecifier));
             if (!relativeResolved) {
                 continue;
             }
 
             if (
-                normalizePathForCompare(relativeResolved.resolvedFile, this.options.caseInsensitive ?? false) !==
-                normalizePathForCompare(resolved.resolvedFile, this.options.caseInsensitive ?? false)
+                normalizePath(relativeResolved.resolvedFile, this.options.caseInsensitive ?? false) !==
+                normalizePath(resolved.resolvedFile, this.options.caseInsensitive ?? false)
             ) {
                 continue;
             }
@@ -330,25 +294,21 @@ export class PreferAliasOrRelativeCore {
         return null;
     }
 
-    private isAliasSpecifierEquivalent(
-        input: PreferAliasOrRelativeInput,
-        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>,
-        aliasSpecifier: string
-    ): boolean {
-        const aliasResolved = this.resolver.resolve(buildResolveInput(input, this.options, aliasSpecifier));
+    private isAliasSpecifierEquivalent(input: ResolveInput, resolved: ResolvedImport, aliasSpecifier: string): boolean {
+        const aliasResolved = this.resolver.resolve(buildNextResolveInput(input, aliasSpecifier));
         if (!aliasResolved) {
             return false;
         }
 
         return (
-            normalizePathForCompare(aliasResolved.resolvedFile, this.options.caseInsensitive ?? false) ===
-            normalizePathForCompare(resolved.resolvedFile, this.options.caseInsensitive ?? false)
+            normalizePath(aliasResolved.resolvedFile, this.options.caseInsensitive ?? false) ===
+            normalizePath(resolved.resolvedFile, this.options.caseInsensitive ?? false)
         );
     }
 
     private findAliasByBackwardFolderWalk(
-        input: PreferAliasOrRelativeInput,
-        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>,
+        input: ResolveInput,
+        resolved: ResolvedImport,
         aliases: readonly string[]
     ): null | string {
         const importerDir = path.dirname(input.importerFile);
@@ -376,8 +336,8 @@ export class PreferAliasOrRelativeCore {
     }
 
     private findAliasNearestToParentFolder(
-        input: PreferAliasOrRelativeInput,
-        resolved: NonNullable<ReturnType<ResolverLike['resolve']>>,
+        input: ResolveInput,
+        resolved: ResolvedImport,
         aliases: readonly string[],
         traversalDepth: number
     ): null | string {

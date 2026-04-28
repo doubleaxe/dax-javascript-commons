@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import type { ManualTsConfigEntry } from './resolve.js';
+import type { ManualTsConfigEntry, ResolveInput } from './resolve.js';
 
 export type ModulePathFixerSettings = {
     alias?: readonly ManualTsConfigEntry[];
@@ -99,4 +99,18 @@ export function getImportEqualsLiteral(node: TSESTree.TSImportEqualsDeclaration)
     }
 
     return isStringLiteral(moduleReference.expression) ? moduleReference.expression : null;
+}
+
+export function buildResolveInput(importerFile: string, specifier: string): ResolveInput {
+    return {
+        importerFile,
+        specifier,
+    };
+}
+
+export function buildNextResolveInput(input: ResolveInput, specifier: string): ResolveInput {
+    return {
+        importerFile: input.importerFile,
+        specifier,
+    };
 }
