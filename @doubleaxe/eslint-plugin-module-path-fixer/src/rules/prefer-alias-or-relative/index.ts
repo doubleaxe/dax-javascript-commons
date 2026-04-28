@@ -4,5 +4,4 @@ export type {
     PreferAliasOrRelativeDecision,
     PreferAliasOrRelativeDecisionKind,
     PreferAliasOrRelativeInput,
-    ResolverLike,
 } from './types.js';

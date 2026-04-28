@@ -2,7 +2,6 @@ import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type { JSONSchema4 } from '@typescript-eslint/utils/json-schema';
 
 import type { ManualTsConfigEntry } from './resolve.js';
-import type { ExtensionsMode } from './rules/extensions/index.js';
 import { createExtensionsCore } from './rules/extensions/index.js';
 import {
     buildFixedLiteral,
@@ -14,9 +13,9 @@ import {
 
 type ExtensionsRuleOptions = {
     alias?: readonly ManualTsConfigEntry[];
-    extension?: ExtensionsMode;
+    extension?: 'always' | 'never';
     extensionMapping?: Readonly<Record<string, string>>;
-    index?: ExtensionsMode;
+    index?: 'always' | 'never';
 };
 
 type Options = [ExtensionsRuleOptions?];
