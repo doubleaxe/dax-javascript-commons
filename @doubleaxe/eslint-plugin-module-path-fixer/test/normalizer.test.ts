@@ -61,11 +61,6 @@ describe('normalizePath', () => {
         expect(normalizePath('/a/b/c/../../../d')).toBe('/d');
     });
 
-    it('handles case sensitivity toggle', () => {
-        expect(normalizePath('@/Components/Button', true)).toBe('@/components/button');
-        expect(normalizePath('@/Components/Button', false)).toBe('@/Components/Button');
-    });
-
     it('handles extreme edge cases (Empty, Dot-only, Trailing)', () => {
         expect(normalizePath('')).toBe('.');
         expect(normalizePath('.')).toBe('.');
@@ -98,9 +93,5 @@ describe('normalizePath', () => {
         expect(normalizePath('/////server/share')).toBe('//server/share');
         expect(normalizePath('\\\\\\server/share')).toBe('//server/share');
         expect(normalizePath('//server///share//file')).toBe('//server/share/file');
-    });
-
-    it('handles absolute paths with case-insensitivity toggle', () => {
-        expect(normalizePath('C:/Users/ADMIN', true)).toBe('c:/users/admin');
     });
 });

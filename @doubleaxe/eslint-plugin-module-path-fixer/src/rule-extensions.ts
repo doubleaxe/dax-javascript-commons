@@ -87,7 +87,6 @@ export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
             extensionMapping: ruleOptions.extensionMapping,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
-            caseInsensitive: settings.caseInsensitive,
             usePackageJson: settings.usePackageJson,
             useTsConfig: settings.useTsConfig,
         });

@@ -1,5 +1,5 @@
-import { extensionsRule } from './extensions.js';
-import { preferAliasOrRelativeRule } from './prefer-alias-or-relative.js';
+import { extensionsRule } from './rule-extensions.js';
+import { preferAliasOrRelativeRule } from './rule-prefer-alias-or-relative.js';
 
 export const rules = {
     'extensions': extensionsRule,

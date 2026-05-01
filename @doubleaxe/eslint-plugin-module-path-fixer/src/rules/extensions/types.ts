@@ -1,7 +1,6 @@
 import type { ManualTsConfigEntry, ResolvedImport } from '../../resolve.js';
 
 export type ExtensionsCoreOptions = {
-    caseInsensitive?: boolean;
     extensionMapping?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];

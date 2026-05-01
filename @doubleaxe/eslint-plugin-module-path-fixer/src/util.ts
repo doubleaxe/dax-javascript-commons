@@ -4,7 +4,6 @@ import type { ManualTsConfigEntry, ResolveInput } from './resolve.js';
 
 export type ModulePathFixerSettings = {
     alias?: readonly ManualTsConfigEntry[];
-    caseInsensitive?: boolean;
     extensions?: readonly string[];
     usePackageJson?: boolean;
     useTsConfig?: boolean;
@@ -27,15 +26,12 @@ export function parseModulePathFixerSettings(settingsInput: unknown): ModulePath
     const extensions = Array.isArray(namespace['extensions'])
         ? (namespace['extensions'] as readonly string[])
         : undefined;
-    const caseInsensitive =
-        typeof namespace['caseInsensitive'] === 'boolean' ? namespace['caseInsensitive'] : undefined;
     const usePackageJson = typeof namespace['usePackageJson'] === 'boolean' ? namespace['usePackageJson'] : undefined;
     const useTsConfig = typeof namespace['useTsConfig'] === 'boolean' ? namespace['useTsConfig'] : undefined;
 
     return {
         alias,
         extensions,
-        caseInsensitive,
         usePackageJson,
         useTsConfig,
     };

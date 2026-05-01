@@ -78,7 +78,6 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
             childFolderAliasDepth: ruleOptions.childFolderAliasDepth,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
-            caseInsensitive: settings.caseInsensitive,
             usePackageJson: settings.usePackageJson,
             useTsConfig: settings.useTsConfig,
         });

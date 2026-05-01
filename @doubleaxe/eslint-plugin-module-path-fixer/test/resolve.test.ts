@@ -244,34 +244,6 @@ describe('ImportResolver', () => {
         expect(third?.resolvedFile).toBe(path.normalize(jsTarget));
     });
 
-    it('resolves relative imports case-insensitively when caseInsensitive is enabled', () => {
-        const root = mkTempProjectFromFixture('relative');
-        const importer = path.join(root, 'src/feature/importer.ts');
-        const target = path.join(root, 'src/utils/helper.ts');
-
-        const resolver = createImportResolver({ caseInsensitive: true, extensions: ['.ts'] });
-        const resolved = resolver.resolve({
-            importerFile: importer,
-            specifier: '../Utils/Helper',
-        });
-
-        expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
-    });
-
-    it('does not resolve relative imports case-insensitively when caseInsensitive is disabled', () => {
-        const root = mkTempProjectFromFixture('relative');
-        const importer = path.join(root, 'src/feature/importer.ts');
-
-        const resolver = createImportResolver({ caseInsensitive: false, extensions: ['.ts'] });
-        const resolved = resolver.resolve({
-            importerFile: importer,
-            specifier: '../Utils/Helper',
-        });
-
-        expect(resolved).toBeNull();
-    });
-
     it('resolves imports through directory symlink', () => {
         const root = mkTempRoot();
 

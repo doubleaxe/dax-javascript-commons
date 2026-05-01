@@ -48,7 +48,6 @@ export type ResolveInput = {
 };
 
 export type ResolveImportOptions = {
-    caseInsensitive?: boolean;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     usePackageJson?: boolean;
@@ -61,10 +60,6 @@ export type PackageJsonContent = {
     [key: string]: unknown;
     imports?: Record<string, unknown>;
 };
-
-function getDefaultCaseInsensitive(): boolean {
-    return process.platform === 'win32' || process.platform === 'darwin';
-}
 
 function tryReadFile(filePath: string): string | undefined {
     try {
@@ -95,76 +90,27 @@ function isFile(filePath: string): boolean {
     }
 }
 
-function resolvePathCaseInsensitive(targetPath: string): string | undefined {
-    const normalizedTarget = normalizePath(targetPath);
-    const absoluteTarget = path.isAbsolute(normalizedTarget)
-        ? normalizedTarget
-        : normalizePath(path.resolve(process.cwd(), normalizedTarget));
-    const parsed = path.parse(absoluteTarget);
-
-    let currentPath = parsed.root;
-    const remaining = absoluteTarget.slice(parsed.root.length);
-    const segments = remaining.length === 0 ? [] : remaining.split(path.sep).filter(Boolean);
-
-    for (const segment of segments) {
-        const exactPath = path.join(currentPath, segment);
-        if (fs.existsSync(exactPath)) {
-            currentPath = exactPath;
-            continue;
-        }
-
-        let entries: string[];
-        try {
-            entries = fs.readdirSync(currentPath);
-        } catch {
-            return undefined;
-        }
-
-        const matched = entries.find((entry) => entry.toLowerCase() === segment.toLowerCase());
-        if (!matched) {
-            return undefined;
-        }
-
-        currentPath = path.join(currentPath, matched);
-    }
-
-    return normalizePath(currentPath);
-}
-
-function resolveFile(filePath: string, caseInsensitive: boolean): string | undefined {
+function resolveFile(filePath: string): string | undefined {
     const normalizedPath = normalizePath(filePath);
 
     if (isFile(normalizedPath)) {
         return normalizedPath;
     }
 
-    if (!caseInsensitive) {
-        return undefined;
-    }
-
-    const matchedPath = resolvePathCaseInsensitive(normalizedPath);
-    if (!matchedPath || !isFile(matchedPath)) {
-        return undefined;
-    }
-
-    return matchedPath;
+    return undefined;
 }
 
-function resolveAsFileOrDirectory(
-    candidatePath: string,
-    extensions: readonly string[],
-    caseInsensitive: boolean
-): string | undefined {
+function resolveAsFileOrDirectory(candidatePath: string, extensions: readonly string[]): string | undefined {
     const normalizedCandidate = normalizePath(candidatePath);
 
-    const fileMatch = resolveFile(normalizedCandidate, caseInsensitive);
+    const fileMatch = resolveFile(normalizedCandidate);
     if (fileMatch) {
         return fileMatch;
     }
 
     for (const ext of extensions) {
         const fileWithExt = `${normalizedCandidate}${ext}`;
-        const fileWithExtMatch = resolveFile(fileWithExt, caseInsensitive);
+        const fileWithExtMatch = resolveFile(fileWithExt);
         if (fileWithExtMatch) {
             return fileWithExtMatch;
         }
@@ -172,7 +118,7 @@ function resolveAsFileOrDirectory(
 
     for (const ext of extensions) {
         const indexWithExt = path.join(normalizedCandidate, `index${ext}`);
-        const indexMatch = resolveFile(indexWithExt, caseInsensitive);
+        const indexMatch = resolveFile(indexWithExt);
         if (indexMatch) {
             return indexMatch;
         }
@@ -249,7 +195,6 @@ function toResolveCacheKey(input: ResolveInput, options: NormaizedResolveImportO
         input.importerFile,
         input.specifier,
         options.extensions.join(','),
-        options.caseInsensitive ? 'ci:1' : 'ci:0',
         options.useTsConfig ? 'ts:1' : 'ts:0',
         options.usePackageJson ? 'pkg:1' : 'pkg:0',
         serializeManualTsConfigs(options.manualTsConfigs),
@@ -274,7 +219,6 @@ export class ImportResolver implements ResolverLike {
     public constructor(options: ResolveImportOptions = {}) {
         this.options = {
             extensions: options.extensions ?? DEFAULT_EXTENSIONS,
-            caseInsensitive: options.caseInsensitive ?? getDefaultCaseInsensitive(),
             useTsConfig: options.useTsConfig ?? true,
             usePackageJson: options.usePackageJson ?? true,
             manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs),
@@ -339,13 +283,12 @@ export class ImportResolver implements ResolverLike {
         const specifier = input.specifier;
         const options = this.options;
         const extensions = options.extensions;
-        const caseInsensitive = options.caseInsensitive;
 
         if (!specifier || !path.isAbsolute(importerFile)) {
             return null;
         }
 
-        const relativeResolved = this.tryResolveRelative(importerFile, specifier, extensions, caseInsensitive);
+        const relativeResolved = this.tryResolveRelative(importerFile, specifier, extensions);
         if (relativeResolved) {
             return {
                 importerFile,
@@ -364,7 +307,6 @@ export class ImportResolver implements ResolverLike {
                 importerFile,
                 specifier,
                 extensions,
-                caseInsensitive,
                 options.useTsConfig,
                 options.manualTsConfigs
             );
@@ -383,12 +325,7 @@ export class ImportResolver implements ResolverLike {
         }
 
         if (options.usePackageJson) {
-            const packageImportsResolved = this.tryResolveWithPackageImports(
-                importerFile,
-                specifier,
-                extensions,
-                caseInsensitive
-            );
+            const packageImportsResolved = this.tryResolveWithPackageImports(importerFile, specifier, extensions);
             if (packageImportsResolved) {
                 return {
                     importerFile,
@@ -409,8 +346,7 @@ export class ImportResolver implements ResolverLike {
     private tryResolveRelative(
         importerFile: string,
         specifier: string,
-        extensions: readonly string[],
-        caseInsensitive: boolean
+        extensions: readonly string[]
     ): string | undefined {
         if (!specifier.startsWith('.')) {
             return undefined;
@@ -419,28 +355,26 @@ export class ImportResolver implements ResolverLike {
         const importerDir = path.dirname(importerFile);
         const candidate = path.resolve(importerDir, specifier);
 
-        return resolveAsFileOrDirectory(candidate, extensions, caseInsensitive);
+        return resolveAsFileOrDirectory(candidate, extensions);
     }
 
     private tryResolveWithTsconfigMatchPath(
         matchPath: MatchPath,
         specifier: string,
-        extensions: readonly string[],
-        caseInsensitive: boolean
+        extensions: readonly string[]
     ): string | undefined {
         const mapped = matchPath(specifier, undefined, undefined, extensions);
         if (!mapped) {
             return undefined;
         }
 
-        return resolveAsFileOrDirectory(mapped, extensions, caseInsensitive);
+        return resolveAsFileOrDirectory(mapped, extensions);
     }
 
     private tryResolveWithTsconfigPaths(
         importerFile: string,
         specifier: string,
         extensions: readonly string[],
-        caseInsensitive: boolean,
         useTsConfig: boolean,
         manualTsConfigs: readonly ManualTsConfigEntry[]
     ): { resolvedFile: string; tsJsConfig?: TsJsConfigCacheEntry } | null {
@@ -450,8 +384,7 @@ export class ImportResolver implements ResolverLike {
             const tsconfigResolved = this.tryResolveWithTsconfigMatchPath(
                 nearestConfig.matchPath,
                 specifier,
-                extensions,
-                caseInsensitive
+                extensions
             );
             if (tsconfigResolved) {
                 return { resolvedFile: tsconfigResolved, tsJsConfig: nearestConfig };
@@ -468,12 +401,7 @@ export class ImportResolver implements ResolverLike {
                 manualTsConfig.paths
             );
 
-            const manualResolved = this.tryResolveWithTsconfigMatchPath(
-                manualMatchPath,
-                specifier,
-                extensions,
-                caseInsensitive
-            );
+            const manualResolved = this.tryResolveWithTsconfigMatchPath(manualMatchPath, specifier, extensions);
             if (!manualResolved) {
                 continue;
             }
@@ -514,8 +442,7 @@ export class ImportResolver implements ResolverLike {
     private tryResolveWithPackageImports(
         importerFile: string,
         specifier: string,
-        extensions: readonly string[],
-        caseInsensitive: boolean
+        extensions: readonly string[]
     ): { packageJson: PackageJsonCacheEntry; resolvedFile: string } | null {
         if (!specifier.startsWith('#')) {
             return null;
@@ -531,7 +458,7 @@ export class ImportResolver implements ResolverLike {
             return null;
         }
 
-        const resolvedFile = resolveAsFileOrDirectory(resolved, extensions, caseInsensitive);
+        const resolvedFile = resolveAsFileOrDirectory(resolved, extensions);
         if (!resolvedFile) {
             return null;
         }

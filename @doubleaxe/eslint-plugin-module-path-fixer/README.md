@@ -39,7 +39,6 @@ Use `settings['module-path-fixer']`:
 ```ts
 type ModulePathFixerSettings = {
     extensions?: string[];
-    caseInsensitive?: boolean;
     usePackageJson?: boolean;
     useTsConfig?: boolean;
     alias?: Array<{
@@ -50,7 +49,6 @@ type ModulePathFixerSettings = {
 ```
 
 - `extensions` - which extensions to resolve, default is '.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'
-- `caseInsensitive` - defaults to `false` for Linux, `true` for Windows and MacOS
 - `usePackageJson` - defaults to `true`, pass `false` to disable
 - `useTsConfig` - defaults to `true`, pass `false` to disable
 - `alias` - global alias list, in tsconfig format, it is used to resolve aliases in addition to `tsconfig.json` and `package.json`, works even if `useTsConfig` is `false`
@@ -281,7 +279,6 @@ export default [
             'module-path-fixer': {
                 // Global resolver settings
                 extensions: ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'],
-                caseInsensitive: false,
                 useTsConfig: true,
                 usePackageJson: true,
                 alias: [

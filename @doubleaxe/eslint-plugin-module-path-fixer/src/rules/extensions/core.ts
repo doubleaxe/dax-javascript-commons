@@ -14,7 +14,6 @@ import { buildNextResolveInput } from '../../util.js';
 import type { ExtensionsCoreOptions, ExtensionsDecision } from './types.js';
 
 type NormalizedCoreOptions = {
-    caseInsensitive?: boolean;
     extensionMapping: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: ExtensionsCoreOptions['manualTsConfigs'];
@@ -125,7 +124,6 @@ export class ExtensionsCore {
             preferExtension: options.preferExtension ?? false,
             preferDirectoryIndex: options.preferDirectoryIndex ?? false,
             extensionMapping: normalizeExtensionMapping(options.extensionMapping),
-            caseInsensitive: options.caseInsensitive,
             extensions: options.extensions,
             manualTsConfigs: options.manualTsConfigs,
             usePackageJson: options.usePackageJson,
@@ -136,7 +134,6 @@ export class ExtensionsCore {
             resolver ??
             createImportResolver({
                 extensions: options.extensions,
-                caseInsensitive: options.caseInsensitive,
                 usePackageJson: options.usePackageJson,
                 useTsConfig: options.useTsConfig,
                 manualTsConfigs: options.manualTsConfigs,
@@ -189,13 +186,9 @@ export class ExtensionsCore {
 
     private isSafeRewrite(input: ResolveInput, originalResolvedFile: string, nextSpecifier: string): boolean {
         const directNextResolved = this.resolver.resolve(buildNextResolveInput(input, nextSpecifier));
-        const caseInsensitive = this.options.caseInsensitive ?? false;
 
         if (directNextResolved) {
-            return (
-                normalizePath(directNextResolved.resolvedFile, caseInsensitive) ===
-                normalizePath(originalResolvedFile, caseInsensitive)
-            );
+            return normalizePath(directNextResolved.resolvedFile) === normalizePath(originalResolvedFile);
         }
 
         if (!this.options.preferExtension) {
@@ -215,10 +208,7 @@ export class ExtensionsCore {
             return false;
         }
 
-        return (
-            normalizePath(extensionlessResolved.resolvedFile, caseInsensitive) ===
-            normalizePath(originalResolvedFile, caseInsensitive)
-        );
+        return normalizePath(extensionlessResolved.resolvedFile) === normalizePath(originalResolvedFile);
     }
 }
 

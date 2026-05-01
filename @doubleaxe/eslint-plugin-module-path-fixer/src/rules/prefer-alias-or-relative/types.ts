@@ -1,7 +1,6 @@
 import type { ManualTsConfigEntry, ResolvedImport } from '../../resolve.js';
 
 export type PreferAliasOrRelativeCoreOptions = {
-    caseInsensitive?: boolean;
     childFolderAliasDepth?: number;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];

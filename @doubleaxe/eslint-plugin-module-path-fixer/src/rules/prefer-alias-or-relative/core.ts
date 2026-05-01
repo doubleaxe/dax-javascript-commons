@@ -7,7 +7,6 @@ import { collectAliasCandidatesForResolvedImport } from './alias-candidates.js';
 import type { PreferAliasOrRelativeCoreOptions, PreferAliasOrRelativeDecision } from './types.js';
 
 type NormalizedCoreOptions = {
-    caseInsensitive?: boolean;
     childFolderAliasDepth: number;
     extensions?: readonly string[];
     manualTsConfigs?: PreferAliasOrRelativeCoreOptions['manualTsConfigs'];
@@ -169,7 +168,6 @@ export class PreferAliasOrRelativeCore {
 
     public constructor(options: PreferAliasOrRelativeCoreOptions = {}, resolver?: ResolverLike) {
         this.options = {
-            caseInsensitive: options.caseInsensitive,
             extensions: options.extensions,
             preferFolderAlias: options.preferFolderAlias ?? true,
             parentFolderAliasDepth: normalizeParentFolderAliasDepth(options.parentFolderAliasDepth),
@@ -182,7 +180,6 @@ export class PreferAliasOrRelativeCore {
             resolver ??
             createImportResolver({
                 extensions: options.extensions,
-                caseInsensitive: options.caseInsensitive,
                 usePackageJson: options.usePackageJson,
                 useTsConfig: options.useTsConfig,
                 manualTsConfigs: options.manualTsConfigs,
@@ -277,10 +274,7 @@ export class PreferAliasOrRelativeCore {
                 continue;
             }
 
-            if (
-                normalizePath(relativeResolved.resolvedFile, this.options.caseInsensitive ?? false) !==
-                normalizePath(resolved.resolvedFile, this.options.caseInsensitive ?? false)
-            ) {
+            if (normalizePath(relativeResolved.resolvedFile) !== normalizePath(resolved.resolvedFile)) {
                 continue;
             }
 
@@ -300,10 +294,7 @@ export class PreferAliasOrRelativeCore {
             return false;
         }
 
-        return (
-            normalizePath(aliasResolved.resolvedFile, this.options.caseInsensitive ?? false) ===
-            normalizePath(resolved.resolvedFile, this.options.caseInsensitive ?? false)
-        );
+        return normalizePath(aliasResolved.resolvedFile) === normalizePath(resolved.resolvedFile);
     }
 
     private findAliasByBackwardFolderWalk(

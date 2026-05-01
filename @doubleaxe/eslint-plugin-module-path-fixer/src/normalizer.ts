@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 
-export function normalizePath(value: string, caseInsensitive?: boolean): string {
+export function normalizePath(value: string): string {
     const p = value.replaceAll('\\', '/');
     let processed = p.replace(/\/+/g, '/');
 
@@ -42,5 +42,5 @@ export function normalizePath(value: string, caseInsensitive?: boolean): string 
         normalized += '/';
     }
 
-    return caseInsensitive ? normalized.toLowerCase() : normalized;
+    return normalized;
 }

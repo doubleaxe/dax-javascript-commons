@@ -3,5 +3,4 @@ export type {
     PreferAliasOrRelativeCoreOptions,
     PreferAliasOrRelativeDecision,
     PreferAliasOrRelativeDecisionKind,
-    PreferAliasOrRelativeInput,
 } from './types.js';

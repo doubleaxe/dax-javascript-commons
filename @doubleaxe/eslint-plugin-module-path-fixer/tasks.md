@@ -32,7 +32,6 @@ Rules should process import-like syntax that represents real imports in code:
 Global settings are set with eslint `settings` under `module-path-fixer` key.
 
 - `extensions` supported extension for file resolution
-- `caseInsensitive` override auto detection of case insensitive file system
 - `usePackageJson`
 - `useTsConfig`
 - `alias` list of manual aliases in format `[{baseUrl: "baseUrl1", paths: {alias1: ["path1"]}}, {baseUrl: "baseUrl2"}]`
