@@ -41,6 +41,7 @@ type ModulePathFixerSettings = {
     extensions?: string[];
     usePackageJson?: boolean;
     useTsConfig?: boolean;
+    extensionAlias?: Record<string, string>;
     alias?: Array<{
         baseUrl: string;
         paths: Record<string, string[]>;
@@ -51,6 +52,7 @@ type ModulePathFixerSettings = {
 - `extensions` - which extensions to resolve, default is '.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'
 - `usePackageJson` - defaults to `true`, pass `false` to disable
 - `useTsConfig` - defaults to `true`, pass `false` to disable
+- `extensionAlias` - maps emitted import extensions back to source extensions when a specifier already includes an explicit extension, default is `{ ts: 'js', tsx: 'jsx', mts: 'mjs', cts: 'cjs' }`
 - `alias` - global alias list, in tsconfig format, it is used to resolve aliases in addition to `tsconfig.json` and `package.json`, works even if `useTsConfig` is `false`
 
 ## Rule: `prefer-alias-or-relative`
@@ -281,6 +283,12 @@ export default [
                 extensions: ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'],
                 useTsConfig: true,
                 usePackageJson: true,
+                extensionAlias: {
+                    ts: 'js',
+                    tsx: 'jsx',
+                    mts: 'mjs',
+                    cts: 'cjs',
+                },
                 alias: [
                     {
                         baseUrl: '.',

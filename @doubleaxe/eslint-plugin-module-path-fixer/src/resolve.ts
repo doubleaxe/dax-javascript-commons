@@ -10,7 +10,12 @@ import { createMatchPath, loadConfig } from 'tsconfig-paths';
 import { normalizePath } from './normalizer.js';
 
 const DEFAULT_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'] as const;
-const TS_OR_JS_CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'] as const;
+const DEFAULT_EXTENSION_ALIAS = {
+    ts: 'js',
+    tsx: 'jsx',
+    mts: 'mjs',
+    cts: 'cjs',
+} as const;
 const PACKAGE_JSON_NAME = 'package.json';
 
 export type ResolveStrategy = 'package-imports' | 'relative' | 'tsconfig-paths';
@@ -19,13 +24,11 @@ export type TsJsConfigCacheEntry = {
     config: ConfigLoaderResult;
     matchPath?: MatchPath;
     path: string;
-    raw: string;
 };
 
 export type PackageJsonCacheEntry = {
     content: PackageJsonContent;
     path: string;
-    raw: string;
 };
 
 export type ResolvedImport = {
@@ -48,13 +51,16 @@ export type ResolveInput = {
 };
 
 export type ResolveImportOptions = {
+    extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     usePackageJson?: boolean;
     useTsConfig?: boolean;
 };
 
-type NormaizedResolveImportOptions = Required<ResolveImportOptions>;
+type NormaizedResolveImportOptions = {
+    extensionAlias: Readonly<Record<string, readonly string[]>>;
+} & Omit<Required<ResolveImportOptions>, 'extensionAlias'>;
 
 export type PackageJsonContent = {
     [key: string]: unknown;
@@ -100,12 +106,29 @@ function resolveFile(filePath: string): string | undefined {
     return undefined;
 }
 
-function resolveAsFileOrDirectory(candidatePath: string, extensions: readonly string[]): string | undefined {
+function resolveAsFileOrDirectory(
+    candidatePath: string,
+    extensions: readonly string[],
+    extensionAlias: Readonly<Record<string, readonly string[]>>
+): string | undefined {
     const normalizedCandidate = normalizePath(candidatePath);
 
     const fileMatch = resolveFile(normalizedCandidate);
     if (fileMatch) {
         return fileMatch;
+    }
+
+    const explicitExtension = normalizeExtensionToken(path.extname(normalizedCandidate));
+    if (explicitExtension.length > 0) {
+        const aliasExtensions = extensionAlias[explicitExtension] ?? [];
+        const extensionlessCandidate = normalizedCandidate.slice(0, -path.extname(normalizedCandidate).length);
+
+        for (const aliasExtension of aliasExtensions) {
+            const aliasedFile = resolveFile(`${extensionlessCandidate}.${aliasExtension}`);
+            if (aliasedFile) {
+                return aliasedFile;
+            }
+        }
     }
 
     for (const ext of extensions) {
@@ -121,6 +144,89 @@ function resolveAsFileOrDirectory(candidatePath: string, extensions: readonly st
         const indexMatch = resolveFile(indexWithExt);
         if (indexMatch) {
             return indexMatch;
+        }
+    }
+
+    return undefined;
+}
+
+function normalizeExtensionToken(value: string): string {
+    const withoutDot = value.startsWith('.') ? value.slice(1) : value;
+    return withoutDot.trim().toLowerCase();
+}
+
+function normalizeExtensionAliases(
+    extensionAlias: Readonly<Record<string, string>> | undefined
+): Readonly<Record<string, readonly string[]>> {
+    const reverseAlias: Record<string, string[]> = {};
+    const aliasEntries = Object.entries({
+        ...DEFAULT_EXTENSION_ALIAS,
+        ...(extensionAlias ?? {}),
+    });
+
+    for (const [sourceExtension, targetExtension] of aliasEntries) {
+        const normalizedSource = normalizeExtensionToken(sourceExtension);
+        const normalizedTarget = normalizeExtensionToken(targetExtension);
+        if (!normalizedSource || !normalizedTarget) {
+            continue;
+        }
+
+        reverseAlias[normalizedTarget] ??= [];
+
+        if (!reverseAlias[normalizedTarget].includes(normalizedSource)) {
+            reverseAlias[normalizedTarget].push(normalizedSource);
+        }
+    }
+
+    for (const aliases of Object.values(reverseAlias)) {
+        aliases.sort();
+    }
+
+    return reverseAlias;
+}
+
+function hasAliasedExplicitExtension(
+    specifier: string,
+    extensionAlias: Readonly<Record<string, readonly string[]>>
+): boolean {
+    const explicitExtension = normalizeExtensionToken(path.extname(specifier));
+    return explicitExtension.length > 0 && (extensionAlias[explicitExtension]?.length ?? 0) > 0;
+}
+
+function hasCompatibleResolvedExtension(
+    specifier: string,
+    resolvedFile: string,
+    extensionAlias: Readonly<Record<string, readonly string[]>>
+): boolean {
+    const explicitExtension = normalizeExtensionToken(path.extname(specifier));
+    if (!explicitExtension) {
+        return true;
+    }
+
+    const resolvedExtension = normalizeExtensionToken(path.extname(resolvedFile));
+    if (!resolvedExtension) {
+        return false;
+    }
+
+    if (resolvedExtension === explicitExtension) {
+        return true;
+    }
+
+    return (extensionAlias[resolvedExtension] ?? []).includes(explicitExtension);
+}
+
+function getAliasedTargetExtension(
+    specifier: string,
+    extensionAlias: Readonly<Record<string, readonly string[]>>
+): string | undefined {
+    const explicitExtension = normalizeExtensionToken(path.extname(specifier));
+    if (!explicitExtension) {
+        return undefined;
+    }
+
+    for (const [targetExtension, sourceExtensions] of Object.entries(extensionAlias)) {
+        if (sourceExtensions.includes(explicitExtension)) {
+            return targetExtension;
         }
     }
 
@@ -190,11 +296,19 @@ function serializeManualTsConfigs(configs: readonly ManualTsConfigEntry[]): stri
         .join('|');
 }
 
+function serializeExtensionAliases(extensionAlias: Readonly<Record<string, readonly string[]>>): string {
+    return Object.entries(extensionAlias)
+        .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+        .map(([targetExtension, sourceExtensions]) => `${targetExtension}=${sourceExtensions.join(',')}`)
+        .join('|');
+}
+
 function toResolveCacheKey(input: ResolveInput, options: NormaizedResolveImportOptions): string {
     return [
         input.importerFile,
         input.specifier,
         options.extensions.join(','),
+        serializeExtensionAliases(options.extensionAlias),
         options.useTsConfig ? 'ts:1' : 'ts:0',
         options.usePackageJson ? 'pkg:1' : 'pkg:0',
         serializeManualTsConfigs(options.manualTsConfigs),
@@ -218,6 +332,7 @@ export class ImportResolver implements ResolverLike {
 
     public constructor(options: ResolveImportOptions = {}) {
         this.options = {
+            extensionAlias: normalizeExtensionAliases(options.extensionAlias),
             extensions: options.extensions ?? DEFAULT_EXTENSIONS,
             useTsConfig: options.useTsConfig ?? true,
             usePackageJson: options.usePackageJson ?? true,
@@ -307,6 +422,7 @@ export class ImportResolver implements ResolverLike {
                 importerFile,
                 specifier,
                 extensions,
+                options.extensionAlias,
                 options.useTsConfig,
                 options.manualTsConfigs
             );
@@ -325,7 +441,12 @@ export class ImportResolver implements ResolverLike {
         }
 
         if (options.usePackageJson) {
-            const packageImportsResolved = this.tryResolveWithPackageImports(importerFile, specifier, extensions);
+            const packageImportsResolved = this.tryResolveWithPackageImports(
+                importerFile,
+                specifier,
+                extensions,
+                options.extensionAlias
+            );
             if (packageImportsResolved) {
                 return {
                     importerFile,
@@ -355,26 +476,37 @@ export class ImportResolver implements ResolverLike {
         const importerDir = path.dirname(importerFile);
         const candidate = path.resolve(importerDir, specifier);
 
-        return resolveAsFileOrDirectory(candidate, extensions);
+        return resolveAsFileOrDirectory(candidate, extensions, this.options.extensionAlias);
     }
 
     private tryResolveWithTsconfigMatchPath(
         matchPath: MatchPath,
         specifier: string,
-        extensions: readonly string[]
+        extensions: readonly string[],
+        extensionAlias: Readonly<Record<string, readonly string[]>>
     ): string | undefined {
         const mapped = matchPath(specifier, undefined, undefined, extensions);
         if (!mapped) {
-            return undefined;
+            if (!hasAliasedExplicitExtension(specifier, extensionAlias)) {
+                return undefined;
+            }
+
+            const extensionlessMapped = matchPath(removeExplicitExtension(specifier), undefined, undefined, extensions);
+            if (!extensionlessMapped) {
+                return undefined;
+            }
+
+            return resolveAsFileOrDirectory(extensionlessMapped, extensions, extensionAlias);
         }
 
-        return resolveAsFileOrDirectory(mapped, extensions);
+        return resolveAsFileOrDirectory(mapped, extensions, extensionAlias);
     }
 
     private tryResolveWithTsconfigPaths(
         importerFile: string,
         specifier: string,
         extensions: readonly string[],
+        extensionAlias: Readonly<Record<string, readonly string[]>>,
         useTsConfig: boolean,
         manualTsConfigs: readonly ManualTsConfigEntry[]
     ): { resolvedFile: string; tsJsConfig?: TsJsConfigCacheEntry } | null {
@@ -384,7 +516,8 @@ export class ImportResolver implements ResolverLike {
             const tsconfigResolved = this.tryResolveWithTsconfigMatchPath(
                 nearestConfig.matchPath,
                 specifier,
-                extensions
+                extensions,
+                extensionAlias
             );
             if (tsconfigResolved) {
                 return { resolvedFile: tsconfigResolved, tsJsConfig: nearestConfig };
@@ -401,7 +534,12 @@ export class ImportResolver implements ResolverLike {
                 manualTsConfig.paths
             );
 
-            const manualResolved = this.tryResolveWithTsconfigMatchPath(manualMatchPath, specifier, extensions);
+            const manualResolved = this.tryResolveWithTsconfigMatchPath(
+                manualMatchPath,
+                specifier,
+                extensions,
+                extensionAlias
+            );
             if (!manualResolved) {
                 continue;
             }
@@ -442,7 +580,8 @@ export class ImportResolver implements ResolverLike {
     private tryResolveWithPackageImports(
         importerFile: string,
         specifier: string,
-        extensions: readonly string[]
+        extensions: readonly string[],
+        extensionAlias: Readonly<Record<string, readonly string[]>>
     ): { packageJson: PackageJsonCacheEntry; resolvedFile: string } | null {
         if (!specifier.startsWith('#')) {
             return null;
@@ -455,10 +594,31 @@ export class ImportResolver implements ResolverLike {
 
         const resolved = this.resolveWithNode(importerFile, specifier);
         if (!resolved) {
+            const aliasedTargetExtension = getAliasedTargetExtension(specifier, extensionAlias);
+            if (!aliasedTargetExtension) {
+                return null;
+            }
+
+            const explicitExtension = path.extname(specifier);
+            const replacedSpecifier = `${specifier.slice(0, -explicitExtension.length)}.${aliasedTargetExtension}`;
+            const aliasedResolved = this.resolveWithNode(importerFile, replacedSpecifier);
+            if (!aliasedResolved || !hasCompatibleResolvedExtension(specifier, aliasedResolved, extensionAlias)) {
+                return null;
+            }
+
+            const aliasedResolvedFile = resolveAsFileOrDirectory(aliasedResolved, extensions, extensionAlias);
+            if (!aliasedResolvedFile) {
+                return null;
+            }
+
+            return { resolvedFile: aliasedResolvedFile, packageJson: nearestPackageJson };
+        }
+
+        if (!hasCompatibleResolvedExtension(specifier, resolved, extensionAlias)) {
             return null;
         }
 
-        const resolvedFile = resolveAsFileOrDirectory(resolved, extensions);
+        const resolvedFile = resolveAsFileOrDirectory(resolved, extensions, extensionAlias);
         if (!resolvedFile) {
             return null;
         }
@@ -498,74 +658,43 @@ export class ImportResolver implements ResolverLike {
     }
 
     private findNearestTsJsConfig(startDir: string): null | TsJsConfigCacheEntry {
-        const visited: string[] = [];
-        let currentDir = startDir;
-
-        while (true) {
-            const memoized = ImportResolver.tsJsNearestCache.get(currentDir);
-            if (memoized !== undefined) {
-                for (const dir of visited) {
-                    ImportResolver.tsJsNearestCache.set(dir, memoized);
-                }
-
-                return memoized.value;
-            }
-
-            visited.push(currentDir);
-
-            for (const fileName of TS_OR_JS_CONFIG_NAMES) {
-                const configPath = path.join(currentDir, fileName);
-                if (!isFile(configPath)) {
-                    continue;
-                }
-
-                const raw = tryReadFile(configPath);
-                if (raw === undefined) {
-                    continue;
-                }
-
-                const loaded = loadConfig(currentDir);
-                if (loaded.resultType !== 'success') {
-                    continue;
-                }
-
-                const loadedConfigPath = normalizePath(loaded.configFileAbsolutePath);
-                if (loadedConfigPath !== normalizePath(configPath)) {
-                    continue;
-                }
-
-                const matchPath = createMatchPath(
-                    loaded.absoluteBaseUrl,
-                    loaded.paths,
-                    loaded.mainFields,
-                    loaded.addMatchAll
-                );
-
-                const entry: TsJsConfigCacheEntry = {
-                    path: normalizePath(configPath),
-                    raw,
-                    config: loaded,
-                    matchPath,
-                };
-
-                for (const dir of visited) {
-                    ImportResolver.tsJsNearestCache.set(dir, { value: entry });
-                }
-
-                return entry;
-            }
-
-            const parentDir = path.dirname(currentDir);
-            if (parentDir === currentDir) {
-                for (const dir of visited) {
-                    ImportResolver.tsJsNearestCache.set(dir, { value: null });
-                }
-
-                return null;
-            }
-
-            currentDir = parentDir;
+        const memoized = ImportResolver.tsJsNearestCache.get(startDir);
+        if (memoized !== undefined) {
+            return memoized.value;
         }
+
+        startDir = normalizePath(startDir);
+        const loaded = loadConfig(startDir);
+
+        if (loaded.resultType !== 'success') {
+            let current = startDir;
+            while (true) {
+                ImportResolver.tsJsNearestCache.set(current, { value: null });
+                const parent = path.dirname(current);
+                if (parent === current) break;
+                current = parent;
+            }
+            return null;
+        }
+
+        const configPath = normalizePath(loaded.configFileAbsolutePath);
+        const configDir = path.dirname(configPath);
+        const entry: TsJsConfigCacheEntry = {
+            path: configPath,
+            config: loaded,
+            matchPath: createMatchPath(loaded.absoluteBaseUrl, loaded.paths, loaded.mainFields, loaded.addMatchAll),
+        };
+
+        let current = startDir;
+        while (true) {
+            ImportResolver.tsJsNearestCache.set(current, { value: entry });
+            if (current === configDir) break;
+            const parent = path.dirname(current);
+            if (parent === current) break;
+            current = parent;
+        }
+
+        return entry;
     }
 
     private findNearestPackageJson(startDir: string): null | PackageJsonCacheEntry {
@@ -586,13 +715,11 @@ export class ImportResolver implements ResolverLike {
 
             const packageJsonPath = path.join(currentDir, PACKAGE_JSON_NAME);
             if (isFile(packageJsonPath)) {
-                const raw = tryReadFile(packageJsonPath);
                 const content = tryReadJson<PackageJsonContent>(packageJsonPath);
 
-                if (raw !== undefined && content !== undefined) {
+                if (content !== undefined) {
                     const entry: PackageJsonCacheEntry = {
                         path: normalizePath(packageJsonPath),
-                        raw,
                         content,
                     };
 

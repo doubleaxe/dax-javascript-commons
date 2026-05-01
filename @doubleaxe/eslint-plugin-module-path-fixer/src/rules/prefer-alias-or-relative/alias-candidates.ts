@@ -53,6 +53,15 @@ function buildTargetSubpaths(baseDir: string, resolvedFile: string): string[] {
     return unique(subpaths);
 }
 
+function buildPackageImportSubpaths(baseDir: string, resolvedFile: string): string[] {
+    const relativeToBase = path.relative(baseDir, resolvedFile);
+    if (!relativeToBase || relativeToBase.startsWith('..') || path.isAbsolute(relativeToBase)) {
+        return [];
+    }
+
+    return [normalizeMappedPath(relativeToBase)];
+}
+
 function extractWildcardValue(pattern: string, value: string): null | string {
     const wildcardIndex = pattern.indexOf('*');
     if (wildcardIndex < 0) {
@@ -142,7 +151,7 @@ function collectFromPackageImports(
     }
 
     const packageRoot = path.dirname(packageJsonPath);
-    const subpaths = buildTargetSubpaths(packageRoot, resolvedFile);
+    const subpaths = buildPackageImportSubpaths(packageRoot, resolvedFile);
     if (subpaths.length === 0) {
         return [];
     }

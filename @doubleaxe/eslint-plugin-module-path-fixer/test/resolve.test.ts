@@ -67,6 +67,45 @@ describe('ImportResolver', () => {
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
+    it('resolves explicit js specifiers to ts sources with the default extension aliases', () => {
+        const root = mkTempProjectFromFixture('relative');
+        const importer = path.join(root, 'src/feature/importer.ts');
+        const target = path.join(root, 'src/core/value.ts');
+
+        fs.rmSync(path.join(root, 'src/core/value.js'));
+
+        const resolver = createImportResolver({ extensions: ['.ts'] });
+        const resolved = resolver.resolve({
+            importerFile: importer,
+            specifier: '../core/value.js',
+        });
+
+        expect(resolved).not.toBeNull();
+        expect(resolved?.strategy).toBe('relative');
+        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+    });
+
+    it('uses custom extension aliases when resolving explicit specifiers', () => {
+        const root = mkTempProjectFromFixture('relative');
+        const importer = path.join(root, 'src/feature/importer.ts');
+        const target = path.join(root, 'src/core/custom.ts');
+
+        fs.writeFileSync(target, 'export const custom = true;\n');
+
+        const resolver = createImportResolver({
+            extensions: ['.ts'],
+            extensionAlias: { ts: 'jsx' },
+        });
+        const resolved = resolver.resolve({
+            importerFile: importer,
+            specifier: '../core/custom.jsx',
+        });
+
+        expect(resolved).not.toBeNull();
+        expect(resolved?.strategy).toBe('relative');
+        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+    });
+
     it('resolves aliases via nearest tsconfig paths and caches nearest config', () => {
         const root = mkTempProjectFromFixture('alias');
         const tsconfigPath = path.join(root, 'tsconfig.json');
@@ -90,7 +129,22 @@ describe('ImportResolver', () => {
 
         expect(nearestA).not.toBeNull();
         expect(nearestA).toBe(nearestB);
-        expect(nearestA?.raw).toContain('"paths"');
+    });
+
+    it('resolves explicit js specifiers through tsconfig paths to ts sources', () => {
+        const root = mkTempProjectFromFixture('alias');
+        const importer = path.join(root, 'src/feature/importer.ts');
+        const target = path.join(root, 'src/utils/tool.ts');
+
+        const resolver = createImportResolver({ extensions: ['.ts'] });
+        const resolved = resolver.resolve({
+            importerFile: importer,
+            specifier: '@app/utils/tool.js',
+        });
+
+        expect(resolved).not.toBeNull();
+        expect(resolved?.strategy).toBe('tsconfig-paths');
+        expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
     it('resolves #imports via nearest package.json imports and caches package location', () => {
@@ -98,25 +152,71 @@ describe('ImportResolver', () => {
         const packageJsonPath = path.join(root, 'package.json');
         const importer = path.join(root, 'src/feature/importer.ts');
         const siblingFile = path.join(root, 'src/feature/another.ts');
-        const target = path.join(root, 'src/core/index.ts');
+        const target = path.join(root, 'src/core/core.mjs');
 
         const resolver = createImportResolver({ extensions: ['.ts'] });
-        const resolved = resolver.resolve({
+        const resolved1 = resolver.resolve({
             importerFile: importer,
-            specifier: '#core',
+            specifier: '#core/core.mjs',
         });
 
-        expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('package-imports');
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
-        expect(resolved?.packageJson?.path).toBe(path.normalize(packageJsonPath));
+        expect(resolved1).not.toBeNull();
+        expect(resolved1?.strategy).toBe('package-imports');
+        expect(resolved1?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved1?.packageJson?.path).toBe(path.normalize(packageJsonPath));
+
+        const resolved2 = resolver.resolve({
+            importerFile: importer,
+            specifier: '#core-mjs',
+        });
+        expect(resolved2).not.toBeNull();
+        expect(resolved2?.strategy).toBe('package-imports');
+        expect(resolved2?.resolvedFile).toBe(path.normalize(target));
 
         const nearestA = resolver.getNearestPackageJson(importer);
         const nearestB = resolver.getNearestPackageJson(siblingFile);
 
         expect(nearestA).not.toBeNull();
         expect(nearestA).toBe(nearestB);
-        expect(nearestA?.raw).toContain('"imports"');
+    });
+
+    it('resolves explicit js specifiers through package imports to ts sources', () => {
+        const root = mkTempProjectFromFixture('imports');
+        const importer = path.join(root, 'src/feature/importer.ts');
+        const target = path.join(root, 'src/core/index.ts');
+
+        const resolver = createImportResolver({ extensions: ['.ts'] });
+        const resolved1 = resolver.resolve({
+            importerFile: importer,
+            specifier: '#core/index.js',
+        });
+
+        expect(resolved1).not.toBeNull();
+        expect(resolved1?.strategy).toBe('package-imports');
+        expect(resolved1?.resolvedFile).toBe(path.normalize(target));
+    });
+
+    it('should not resolve foreign extensions', () => {
+        const root = mkTempProjectFromFixture('imports');
+        const importer = path.join(root, 'src/feature/importer.ts');
+        const target = path.join(root, 'src/core/core.mjs');
+
+        const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mts', '.mjs'] });
+        const resolved1 = resolver.resolve({
+            importerFile: importer,
+            specifier: '#core/core.ts',
+        });
+
+        expect(resolved1).toBeNull();
+
+        const resolved2 = resolver.resolve({
+            importerFile: importer,
+            specifier: '#core/core.mts',
+        });
+
+        expect(resolved2).not.toBeNull();
+        expect(resolved2?.strategy).toBe('package-imports');
+        expect(resolved2?.resolvedFile).toBe(path.normalize(target));
     });
 
     it('resolves manual tsconfig aliases from resolver options', () => {
@@ -157,7 +257,7 @@ describe('ImportResolver', () => {
         const importsResolver = createImportResolver({ extensions: ['.ts'], usePackageJson: false });
         const importsResolved = importsResolver.resolve({
             importerFile: importsImporter,
-            specifier: '#core',
+            specifier: '#core/core.mjs',
         });
 
         expect(importsResolved).toBeNull();
@@ -283,5 +383,26 @@ describe('ImportResolver', () => {
         });
         expect(third).not.toBeNull();
         expect(third?.resolvedFile).toBe(path.normalize(targetReal));
+    });
+
+    it('resolves tsconfig through directory symlink', () => {
+        const root = mkTempRoot();
+
+        const realDir = path.join(root, 'real');
+        copyDirectoryRecursive(path.join(fixturesRoot, 'alias'), realDir);
+
+        const linkDir = path.join(root, 'link');
+        fs.symlinkSync(realDir, linkDir, 'dir');
+
+        const resolver = createImportResolver({ extensions: ['.ts'] });
+        const importer = path.join(linkDir, 'src/feature/importer.ts');
+        const nearestA = resolver.getNearestPackageJson(importer);
+
+        const upperOne = path.join(linkDir, 'src/feature.ts');
+        const nearestB = resolver.getNearestPackageJson(upperOne);
+
+        expect(nearestA).not.toBeNull();
+        expect(nearestA).toBe(nearestB);
+        expect(nearestB?.path).toBe(path.join(linkDir, 'package.json'));
     });
 });

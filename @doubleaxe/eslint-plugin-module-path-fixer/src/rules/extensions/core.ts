@@ -14,6 +14,7 @@ import { buildNextResolveInput } from '../../util.js';
 import type { ExtensionsCoreOptions, ExtensionsDecision } from './types.js';
 
 type NormalizedCoreOptions = {
+    extensionAlias?: Readonly<Record<string, string>>;
     extensionMapping: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: ExtensionsCoreOptions['manualTsConfigs'];
@@ -125,6 +126,7 @@ export class ExtensionsCore {
             preferDirectoryIndex: options.preferDirectoryIndex ?? false,
             extensionMapping: normalizeExtensionMapping(options.extensionMapping),
             extensions: options.extensions,
+            extensionAlias: options.extensionAlias,
             manualTsConfigs: options.manualTsConfigs,
             usePackageJson: options.usePackageJson,
             useTsConfig: options.useTsConfig,
@@ -134,6 +136,7 @@ export class ExtensionsCore {
             resolver ??
             createImportResolver({
                 extensions: options.extensions,
+                extensionAlias: options.extensionAlias,
                 usePackageJson: options.usePackageJson,
                 useTsConfig: options.useTsConfig,
                 manualTsConfigs: options.manualTsConfigs,

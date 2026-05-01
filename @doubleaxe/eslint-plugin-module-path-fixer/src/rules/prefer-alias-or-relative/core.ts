@@ -8,6 +8,7 @@ import type { PreferAliasOrRelativeCoreOptions, PreferAliasOrRelativeDecision } 
 
 type NormalizedCoreOptions = {
     childFolderAliasDepth: number;
+    extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: PreferAliasOrRelativeCoreOptions['manualTsConfigs'];
     parentFolderAliasDepth: number;
@@ -142,11 +143,15 @@ function getParentAnchorSpecifier(depth: number): string {
     return new Array(depth).fill('..').join('/');
 }
 
-function buildRelativeCandidates(importerFile: string, resolvedFile: string): string[] {
+function buildRelativeCandidates(importerFile: string, resolvedFile: string, preserveExtension: boolean): string[] {
     const importerDir = path.dirname(importerFile);
     const relativeWithExt = ensureRelativePrefix(toPosix(path.relative(importerDir, resolvedFile)));
     if (!relativeWithExt || relativeWithExt === './') {
         return [];
+    }
+
+    if (preserveExtension) {
+        return [relativeWithExt];
     }
 
     const relativeNoExt = removeExtension(relativeWithExt);
@@ -175,11 +180,13 @@ export class PreferAliasOrRelativeCore {
             usePackageJson: options.usePackageJson,
             useTsConfig: options.useTsConfig,
             manualTsConfigs: options.manualTsConfigs,
+            extensionAlias: options.extensionAlias,
         };
         this.resolver =
             resolver ??
             createImportResolver({
                 extensions: options.extensions,
+                extensionAlias: options.extensionAlias,
                 usePackageJson: options.usePackageJson,
                 useTsConfig: options.useTsConfig,
                 manualTsConfigs: options.manualTsConfigs,
@@ -266,7 +273,11 @@ export class PreferAliasOrRelativeCore {
         input: ResolveInput,
         resolved: ResolvedImport
     ): null | PreferAliasOrRelativeDecision {
-        const relativeCandidates = buildRelativeCandidates(input.importerFile, resolved.resolvedFile);
+        const relativeCandidates = buildRelativeCandidates(
+            input.importerFile,
+            resolved.resolvedFile,
+            Boolean(resolved.packageJson?.content.imports && Object.keys(resolved.packageJson.content.imports).length > 0)
+        );
 
         for (const relativeSpecifier of relativeCandidates) {
             const relativeResolved = this.resolver.resolve(buildNextResolveInput(input, relativeSpecifier));

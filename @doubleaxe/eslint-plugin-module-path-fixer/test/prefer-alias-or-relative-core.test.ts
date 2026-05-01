@@ -77,8 +77,8 @@ describe('PreferAliasOrRelativeCore', () => {
         });
 
         expect(result).not.toBeNull();
-        expect(result?.kind).toBe('normalize');
-        expect(result?.nextSpecifier).toBe('./another');
+        expect(result?.kind).toBe('to-alias');
+        expect(result?.nextSpecifier).toBe('@app/feature/another');
     });
 
     it('converts parent relative specifier to tsconfig alias by default', () => {
@@ -189,30 +189,30 @@ describe('PreferAliasOrRelativeCore', () => {
         const root = mkTempProjectFromFixture('imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.mjs'] });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '../core',
+            specifier: '../core/core.mjs',
         });
 
         expect(result).not.toBeNull();
         expect(result?.kind).toBe('to-alias');
-        expect(result?.nextSpecifier).toBe('#core');
+        expect(result?.nextSpecifier).toBe('#core/core.mjs');
     });
 
     it('converts package imports alias to shortest relative path', () => {
         const root = mkTempProjectFromFixture('imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const core = createPreferAliasOrRelativeCore({ extensions: ['.ts'] });
+        const core = createPreferAliasOrRelativeCore({ extensions: ['.mjs'] });
         const result = core.evaluate({
             importerFile: importer,
-            specifier: '#core',
+            specifier: '#core/core.mjs',
         });
 
         expect(result).not.toBeNull();
         expect(result?.kind).toBe('to-relative');
-        expect(result?.nextSpecifier).toBe('../core');
+        expect(result?.nextSpecifier).toBe('../core/core.mjs');
     });
 
     it('ignores unresolved imports', () => {

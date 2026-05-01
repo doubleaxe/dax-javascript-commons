@@ -85,6 +85,7 @@ export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
             preferExtension: ruleOptions.extension === 'always',
             preferDirectoryIndex: ruleOptions.index === 'always',
             extensionMapping: ruleOptions.extensionMapping,
+            extensionAlias: settings.extensionAlias,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
             usePackageJson: settings.usePackageJson,

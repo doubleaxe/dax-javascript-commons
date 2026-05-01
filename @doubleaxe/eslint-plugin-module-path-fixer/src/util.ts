@@ -4,6 +4,7 @@ import type { ManualTsConfigEntry, ResolveInput } from './resolve.js';
 
 export type ModulePathFixerSettings = {
     alias?: readonly ManualTsConfigEntry[];
+    extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     usePackageJson?: boolean;
     useTsConfig?: boolean;
@@ -23,6 +24,15 @@ export function parseModulePathFixerSettings(settingsInput: unknown): ModulePath
     const alias = Array.isArray(namespace['alias'])
         ? (namespace['alias'] as readonly ManualTsConfigEntry[])
         : undefined;
+    const extensionAliasRecord = asRecord(namespace['extensionAlias']);
+    const extensionAlias = extensionAliasRecord
+        ? (Object.fromEntries(
+              Object.entries(extensionAliasRecord).filter((entry): entry is [string, string] => {
+                  const [sourceExtension, targetExtension] = entry;
+                  return sourceExtension.length > 0 && typeof targetExtension === 'string';
+              })
+          ) as Readonly<Record<string, string>>)
+        : undefined;
     const extensions = Array.isArray(namespace['extensions'])
         ? (namespace['extensions'] as readonly string[])
         : undefined;
@@ -31,6 +41,7 @@ export function parseModulePathFixerSettings(settingsInput: unknown): ModulePath
 
     return {
         alias,
+        extensionAlias,
         extensions,
         usePackageJson,
         useTsConfig,
