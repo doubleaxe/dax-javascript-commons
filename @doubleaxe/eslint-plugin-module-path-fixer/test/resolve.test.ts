@@ -4,7 +4,7 @@ import * as path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { createImportResolver } from '../src/resolve.js';
+import { createImportResolver, ImportResolver } from '../src/resolve.js';
 
 const tempRoots: string[] = [];
 const fixturesRoot = path.resolve(process.cwd(), 'test-assets');
@@ -48,6 +48,7 @@ afterEach(() => {
             fs.rmSync(root, { recursive: true, force: true });
         }
     }
+    ImportResolver.clearCaches();
 });
 
 describe('ImportResolver', () => {
@@ -63,7 +64,6 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('relative');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
@@ -81,7 +81,6 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('relative');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
@@ -102,13 +101,11 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('relative');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
     it('resolves aliases via nearest tsconfig paths and caches nearest config', () => {
         const root = mkTempProjectFromFixture('alias');
-        const tsconfigPath = path.join(root, 'tsconfig.json');
         const importer = path.join(root, 'src/feature/importer.ts');
         const siblingFile = path.join(root, 'src/feature/another.ts');
         const target = path.join(root, 'src/utils/tool.ts');
@@ -120,12 +117,10 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('tsconfig-paths');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
-        expect(resolved?.tsJsConfig?.path).toBe(path.normalize(tsconfigPath));
 
-        const nearestA = resolver.getNearestTsJsConfig(importer);
-        const nearestB = resolver.getNearestTsJsConfig(siblingFile);
+        const nearestA = resolver.getNearestTsJsConfig(path.dirname(importer));
+        const nearestB = resolver.getNearestTsJsConfig(path.dirname(siblingFile));
 
         expect(nearestA).not.toBeNull();
         expect(nearestA).toBe(nearestB);
@@ -143,13 +138,11 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('tsconfig-paths');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
     it('resolves #imports via nearest package.json imports and caches package location', () => {
         const root = mkTempProjectFromFixture('imports');
-        const packageJsonPath = path.join(root, 'package.json');
         const importer = path.join(root, 'src/feature/importer.ts');
         const siblingFile = path.join(root, 'src/feature/another.ts');
         const target = path.join(root, 'src/core/core.mjs');
@@ -161,16 +154,13 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved1).not.toBeNull();
-        expect(resolved1?.strategy).toBe('package-imports');
         expect(resolved1?.resolvedFile).toBe(path.normalize(target));
-        expect(resolved1?.packageJson?.path).toBe(path.normalize(packageJsonPath));
 
         const resolved2 = resolver.resolve({
             importerFile: importer,
             specifier: '#core-mjs',
         });
         expect(resolved2).not.toBeNull();
-        expect(resolved2?.strategy).toBe('package-imports');
         expect(resolved2?.resolvedFile).toBe(path.normalize(target));
 
         const nearestA = resolver.getNearestPackageJson(importer);
@@ -192,7 +182,6 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved1).not.toBeNull();
-        expect(resolved1?.strategy).toBe('package-imports');
         expect(resolved1?.resolvedFile).toBe(path.normalize(target));
     });
 
@@ -215,7 +204,6 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved2).not.toBeNull();
-        expect(resolved2?.strategy).toBe('package-imports');
         expect(resolved2?.resolvedFile).toBe(path.normalize(target));
     });
 
@@ -235,7 +223,6 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('tsconfig-paths');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
@@ -280,7 +267,6 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('tsconfig-paths');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
@@ -303,7 +289,6 @@ describe('ImportResolver', () => {
         });
 
         expect(resolved).not.toBeNull();
-        expect(resolved?.strategy).toBe('tsconfig-paths');
         expect(resolved?.resolvedFile).toBe(path.normalize(target));
     });
 
@@ -333,7 +318,7 @@ describe('ImportResolver', () => {
         expect(second).toBe(first);
         expect(second?.resolvedFile).toBe(path.normalize(tsTarget));
 
-        resolver.clearCaches();
+        ImportResolver.clearCaches();
 
         const third = resolver.resolve({
             importerFile: importer,

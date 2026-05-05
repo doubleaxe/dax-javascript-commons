@@ -1,15 +1,7 @@
 import * as path from 'node:path';
 
 import { normalizePath } from '../../normalizer.js';
-import {
-    addExtension,
-    createImportResolver,
-    getResolvedExtension,
-    hasExplicitExtension,
-    removeExplicitExtension,
-    type ResolveInput,
-    type ResolverLike,
-} from '../../resolve.js';
+import { createImportResolver, type ResolveInput, type ResolverLike } from '../../resolve.js';
 import { buildNextResolveInput } from '../../util.js';
 import type { ExtensionsCoreOptions, ExtensionsDecision } from './types.js';
 
@@ -30,6 +22,32 @@ const DEFAULT_EXTENSION_MAPPING: Readonly<Record<string, string>> = {
     mts: 'mjs',
     cts: 'cjs',
 };
+
+function getResolvedExtension(resolvedFile: string): string {
+    return path.extname(resolvedFile);
+}
+
+function hasExplicitExtension(specifier: string): boolean {
+    const extension = path.extname(specifier);
+    return extension.length > 0;
+}
+
+function removeExplicitExtension(specifier: string): string {
+    const extension = path.extname(specifier);
+    if (!extension) {
+        return specifier;
+    }
+
+    return specifier.slice(0, -extension.length);
+}
+
+function addExtension(specifier: string, extension: string): string {
+    if (!extension.startsWith('.')) {
+        return `${specifier}.${extension}`;
+    }
+
+    return `${specifier}${extension}`;
+}
 
 function normalizeExtensionToken(value: string): string {
     const withoutDot = value.startsWith('.') ? value.slice(1) : value;
