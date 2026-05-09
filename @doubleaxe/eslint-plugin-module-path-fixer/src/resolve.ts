@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import type { Resolver } from 'enhanced-resolve';
 import enhancedResolve, { CachedInputFileSystem } from 'enhanced-resolve';
 import { LRUCache } from 'lru-cache';
-import type { ConfigLoaderResult, ConfigLoaderSuccessResult } from 'tsconfig-paths';
+import type { ConfigLoaderSuccessResult } from 'tsconfig-paths';
 import { loadConfig, matchFromAbsolutePaths } from 'tsconfig-paths';
 
 import { normalizePath } from './normalizer.js';
@@ -16,11 +16,10 @@ const DEFAULT_EXTENSION_ALIAS = {
     mts: 'mjs',
     cts: 'cjs',
 } as const;
-const PACKAGE_JSON_NAME = 'package.json';
 
 export type TsJsConfigCacheEntry = {
     alias: AbsolutePathAliasArray;
-    config: ConfigLoaderResult;
+    config: ConfigLoaderSuccessResult;
     path: string;
 };
 
@@ -55,7 +54,7 @@ export type ResolveImportOptions = {
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     usePackageJson?: boolean;
-    useTsConfig?: boolean;
+    useTsConfig?: boolean | string | string[];
 };
 
 type NormaizedResolveImportOptions = Required<ResolveImportOptions>;
@@ -64,35 +63,6 @@ export type PackageJsonContent = {
     [key: string]: unknown;
     imports?: Record<string, unknown>;
 };
-
-function tryReadFile(filePath: string): string | undefined {
-    try {
-        return fs.readFileSync(filePath, 'utf8');
-    } catch {
-        return undefined;
-    }
-}
-
-function tryReadJson<T>(filePath: string): T | undefined {
-    const raw = tryReadFile(filePath);
-    if (raw === undefined) {
-        return undefined;
-    }
-
-    try {
-        return JSON.parse(raw) as T;
-    } catch {
-        return undefined;
-    }
-}
-
-function isFile(filePath: string): boolean {
-    try {
-        return fs.statSync(filePath).isFile();
-    } catch {
-        return false;
-    }
-}
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -296,58 +266,69 @@ function serializeExtensionAliases(extensionAlias: Readonly<Record<string, strin
         .join('|');
 }
 
-function toResolveCacheKey(input: ResolveInputDir, options: NormaizedResolveImportOptions): string {
+function toResolveCacheKey(options: NormaizedResolveImportOptions): string {
     return [
-        input.importerDir,
-        input.specifier,
         options.extensions.join(','),
         serializeExtensionAliases(options.extensionAlias),
-        options.useTsConfig ? 'ts:1' : 'ts:0',
-        options.usePackageJson ? 'pkg:1' : 'pkg:0',
+        String(options.useTsConfig),
+        String(options.usePackageJson),
         serializeManualTsConfigs(options.manualTsConfigs),
     ].join('\u0000');
 }
 
-function isTsConfigSuccess(config: ConfigLoaderResult): config is ConfigLoaderSuccessResult {
-    return config.resultType === 'success';
-}
-
 export type ResolverLike = {
+    clearCache: () => void;
     getAliasMappings: (filePath: string) => AbsolutePathAliasArray;
     resolve: (input: ResolveInput | ResolveInputDir) => null | ResolvedImport;
 };
 
 const RESOLVE_CACHE_TTL = 10_000;
 const CONFIG_CACHE_TTL = 30_000;
-export class ImportResolver implements ResolverLike {
+class ImportResolverImpl implements ResolverLike {
     private readonly options: NormaizedResolveImportOptions;
     private enhancedResolver: Resolver | undefined;
     private readonly extensionAlias: ReverseExtensionAlias;
     private readonly absolutePathAlias: AbsolutePathAliasArray;
-    private static readonly resolveCache = new LRUCache<string, { value: null | ResolvedImport }>({
-        max: 10_000,
+    private readonly resolveCache = new LRUCache<string, { value: null | ResolvedImport }>({
+        max: 5_000,
         ttl: RESOLVE_CACHE_TTL,
     });
-    private static readonly tsJsNearestCache = new LRUCache<string, { value: null | TsJsConfigCacheEntry }>({
+    private static readonly resolverCache = new LRUCache<string, ImportResolverImpl>({ max: 100 });
+    // cannot be static, because uses options
+    private readonly tsconfigCache = new LRUCache<string, { value: null | TsJsConfigCacheEntry }>({
         max: 5_000,
         ttl: CONFIG_CACHE_TTL,
     });
-    private static readonly packageNearestCache = new LRUCache<string, { value: null | PackageJsonCacheEntry }>({
+    private static readonly packageJsonCache = new LRUCache<string, { value: null | PackageJsonCacheEntry }>({
         max: 5_000,
         ttl: CONFIG_CACHE_TTL,
     });
     private static readonly fileSystem = new CachedInputFileSystem(fs, RESOLVE_CACHE_TTL);
 
-    public constructor(options: ResolveImportOptions = {}) {
-        this.options = {
+    public constructor(options: NormaizedResolveImportOptions) {
+        this.options = options;
+        this.extensionAlias = buildReverseExtensionAliases(options.extensionAlias);
+        this.absolutePathAlias = buildAbsoluteAliasOptions(options.manualTsConfigs);
+    }
+
+    public static createNew(options: ResolveImportOptions = {}): ImportResolverImpl {
+        const normalizedOptions: NormaizedResolveImportOptions = {
             extensionAlias: options.extensionAlias ?? DEFAULT_EXTENSION_ALIAS,
             extensions: options.extensions ?? DEFAULT_EXTENSIONS,
             manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs),
             useTsConfig: options.useTsConfig ?? true,
             usePackageJson: options.usePackageJson ?? true,
         };
-        this.extensionAlias = buildReverseExtensionAliases(this.options.extensionAlias);
-        this.absolutePathAlias = buildAbsoluteAliasOptions(this.options.manualTsConfigs);
+        const key = toResolveCacheKey(normalizedOptions);
+        let cached = ImportResolverImpl.resolverCache.get(key);
+        if (cached) {
+            return cached;
+        }
+
+        cached = new ImportResolverImpl(normalizedOptions);
+        ImportResolverImpl.resolverCache.set(key, cached);
+
+        return cached;
     }
 
     public resolve(input: ResolveInput | ResolveInputDir): null | ResolvedImport {
@@ -359,15 +340,15 @@ export class ImportResolver implements ResolverLike {
             importerDir,
             specifier: normalizePath(input.specifier),
         };
-        const key = toResolveCacheKey(normalizedInput, this.options);
-        const cached = ImportResolver.resolveCache.get(key);
+        const key = `${normalizedInput.importerDir}\u0000${normalizedInput.specifier}`;
+        const cached = this.resolveCache.get(key);
 
         if (cached !== undefined) {
             return cached.value;
         }
 
         const resolved = this.resolveUncached(normalizedInput);
-        ImportResolver.resolveCache.set(key, { value: resolved });
+        this.resolveCache.set(key, { value: resolved });
 
         return resolved;
     }
@@ -382,7 +363,7 @@ export class ImportResolver implements ResolverLike {
 
         if (this.options.useTsConfig) {
             const nearestTsConfig = this.getNearestTsJsConfig(fileDir);
-            if (nearestTsConfig && isTsConfigSuccess(nearestTsConfig.config)) {
+            if (nearestTsConfig) {
                 mappings.push(...nearestTsConfig.alias);
             }
         }
@@ -398,36 +379,40 @@ export class ImportResolver implements ResolverLike {
     }
 
     public getNearestTsJsConfig(fileDir: string): null | TsJsConfigCacheEntry {
-        const cached = ImportResolver.tsJsNearestCache.get(fileDir);
+        const cached = this.tsconfigCache.get(fileDir);
 
         if (cached !== undefined) {
             return cached.value;
         }
 
         const nearest = this.findNearestTsJsConfig(fileDir);
-        ImportResolver.tsJsNearestCache.set(fileDir, { value: nearest });
+        this.tsconfigCache.set(fileDir, { value: nearest });
 
         return nearest;
     }
 
     public getNearestPackageJson(fileDir: string): null | PackageJsonCacheEntry {
-        const cached = ImportResolver.packageNearestCache.get(fileDir);
+        const cached = ImportResolverImpl.packageJsonCache.get(fileDir);
 
         if (cached !== undefined) {
             return cached.value;
         }
 
         const nearest = this.findNearestPackageJson(fileDir);
-        ImportResolver.packageNearestCache.set(fileDir, { value: nearest });
+        ImportResolverImpl.packageJsonCache.set(fileDir, { value: nearest });
 
         return nearest;
     }
 
+    public clearCache(): void {
+        this.resolveCache.clear();
+        this.tsconfigCache.clear();
+    }
+
     public static clearCaches(): void {
-        ImportResolver.resolveCache.clear();
-        ImportResolver.tsJsNearestCache.clear();
-        ImportResolver.packageNearestCache.clear();
-        ImportResolver.fileSystem.purge();
+        ImportResolverImpl.resolverCache.clear();
+        ImportResolverImpl.packageJsonCache.clear();
+        ImportResolverImpl.fileSystem.purge();
     }
 
     private resolveUncached(input: ResolveInputDir): null | ResolvedImport {
@@ -470,7 +455,7 @@ export class ImportResolver implements ResolverLike {
         let lastSuccessfullPath: string | undefined;
         const fileExists = (filePath: string) => {
             try {
-                ImportResolver.fileSystem.statSync(filePath);
+                ImportResolverImpl.fileSystem.statSync(filePath).isFile();
                 lastSuccessfullPath = filePath;
                 return true;
             } catch {
@@ -518,7 +503,7 @@ export class ImportResolver implements ResolverLike {
                 extensionAliasForExports: false,
                 extensions: [...this.options.extensions],
                 fallback: [],
-                fileSystem: ImportResolver.fileSystem,
+                fileSystem: ImportResolverImpl.fileSystem,
                 fullySpecified: false,
                 importsFields: this.options.usePackageJson ? ['imports'] : [],
                 mainFields: [],
@@ -545,93 +530,158 @@ export class ImportResolver implements ResolverLike {
     }
 
     private findNearestTsJsConfig(startDir: string): null | TsJsConfigCacheEntry {
-        const memoized = ImportResolver.tsJsNearestCache.get(startDir);
-        if (memoized !== undefined) {
-            return memoized.value;
-        }
-
-        const loaded = loadConfig(startDir);
-
-        if (loaded.resultType !== 'success') {
-            let current = startDir;
-            while (true) {
-                ImportResolver.tsJsNearestCache.set(current, { value: null });
-                const parent = path.dirname(current);
-                if (parent === current) break;
-                current = parent;
-            }
-            return null;
-        }
-
-        const configPath = normalizePath(loaded.configFileAbsolutePath);
-        const configDir = path.dirname(configPath);
-        const entry: TsJsConfigCacheEntry = {
-            alias: buildAbsoluteAliasOptions([
-                {
-                    baseUrl: loaded.absoluteBaseUrl,
-                    paths: loaded.paths,
-                },
-            ]),
-            path: configPath,
-            config: loaded,
+        const arrayFromString = (s: string | string[]) => {
+            return Array.isArray(s) ? s : [s];
         };
+        const tsconfigName =
+            typeof this.options.useTsConfig === 'boolean'
+                ? ['tsconfig.json', 'jsconfig.json']
+                : arrayFromString(this.options.useTsConfig);
 
-        let current = startDir;
+        let currentDir = startDir;
+        let visited: string[] = [];
         while (true) {
-            ImportResolver.tsJsNearestCache.set(current, { value: entry });
-            if (current === configDir) break;
-            const parent = path.dirname(current);
-            if (parent === current) break;
-            current = parent;
-        }
+            const {
+                currentDir: foundDir,
+                foundCached,
+                foundPath,
+                visited: currentlyVisited,
+            } = this.findNearestFile(currentDir, this.tsconfigCache, tsconfigName, visited);
+            visited = currentlyVisited;
 
-        return entry;
+            if (foundCached) {
+                return foundCached.value;
+            }
+            if (!foundPath) {
+                return null;
+            }
+
+            try {
+                const loaded = loadConfig(foundPath);
+
+                if (loaded.resultType === 'success') {
+                    const configPath = normalizePath(loaded.configFileAbsolutePath);
+                    const entry: TsJsConfigCacheEntry = {
+                        alias: buildAbsoluteAliasOptions([
+                            {
+                                baseUrl: loaded.absoluteBaseUrl,
+                                paths: loaded.paths,
+                            },
+                        ]),
+                        path: configPath,
+                        config: loaded,
+                    };
+
+                    for (const dir of visited) {
+                        this.tsconfigCache.set(dir, { value: entry });
+                    }
+
+                    return entry;
+                }
+            } catch {
+                /**/
+            }
+
+            currentDir = path.dirname(foundDir);
+            if (foundDir === currentDir) {
+                for (const dir of visited) {
+                    this.tsconfigCache.set(dir, { value: null });
+                }
+                return null;
+            }
+        }
     }
 
     private findNearestPackageJson(startDir: string): null | PackageJsonCacheEntry {
-        const visited: string[] = [];
         let currentDir = startDir;
+        let visited: string[] = [];
 
         while (true) {
-            const memoized = ImportResolver.packageNearestCache.get(currentDir);
-            if (memoized !== undefined) {
+            const {
+                currentDir: foundDir,
+                foundCached,
+                foundPath,
+                visited: currentlyVisited,
+            } = this.findNearestFile(currentDir, ImportResolverImpl.packageJsonCache, ['package.json'], visited);
+            visited = currentlyVisited;
+
+            if (foundCached) {
+                return foundCached.value;
+            }
+            if (!foundPath) {
+                return null;
+            }
+
+            try {
+                const raw = fs.readFileSync(foundPath, 'utf8');
+                const content = JSON.parse(raw) as PackageJsonContent;
+                const entry: PackageJsonCacheEntry = {
+                    alias: [],
+                    path: normalizePath(foundPath),
+                    content,
+                };
+                const imports = buildPackageImportAliases(entry);
+                if (imports) entry.alias = buildAbsoluteAliasOptions([imports]);
+
                 for (const dir of visited) {
-                    ImportResolver.packageNearestCache.set(dir, memoized);
+                    ImportResolverImpl.packageJsonCache.set(dir, { value: entry });
                 }
 
-                return memoized.value;
+                return entry;
+            } catch {
+                /**/
+            }
+
+            currentDir = path.dirname(foundDir);
+            if (foundDir === currentDir) {
+                for (const dir of visited) {
+                    ImportResolverImpl.packageJsonCache.set(dir, { value: null });
+                }
+                return null;
+            }
+        }
+    }
+
+    private findNearestFile<T>(
+        startDir: string,
+        cache: LRUCache<string, { value: null | T }>,
+        fileNames: string[],
+        visited: string[]
+    ): { currentDir: string; foundCached?: { value: null | T }; foundPath?: string; visited: string[] } {
+        let currentDir = startDir;
+        const fileExists = (filePath: string) => {
+            try {
+                ImportResolverImpl.fileSystem.statSync(filePath).isFile();
+                return true;
+            } catch {
+                return false;
+            }
+        };
+
+        while (true) {
+            const memoized = cache.get(currentDir);
+            if (memoized !== undefined) {
+                for (const dir of visited) {
+                    cache.set(dir, memoized);
+                }
+                return { currentDir, visited: [], foundCached: memoized };
             }
 
             visited.push(currentDir);
 
-            const packageJsonPath = path.join(currentDir, PACKAGE_JSON_NAME);
-            if (isFile(packageJsonPath)) {
-                const content = tryReadJson<PackageJsonContent>(packageJsonPath);
-
-                if (content !== undefined) {
-                    const entry: PackageJsonCacheEntry = {
-                        alias: [],
-                        path: normalizePath(packageJsonPath),
-                        content,
-                    };
-                    const imports = buildPackageImportAliases(entry);
-                    if (imports) entry.alias = buildAbsoluteAliasOptions([imports]);
-
-                    for (const dir of visited) {
-                        ImportResolver.packageNearestCache.set(dir, { value: entry });
-                    }
-
-                    return entry;
+            for (const fileName of fileNames) {
+                const filePath = path.join(currentDir, fileName);
+                if (fileExists(filePath)) {
+                    return { currentDir, visited, foundPath: filePath };
                 }
             }
 
             const parentDir = path.dirname(currentDir);
             if (parentDir === currentDir) {
                 for (const dir of visited) {
-                    ImportResolver.packageNearestCache.set(dir, { value: null });
+                    cache.set(dir, { value: null });
                 }
-
-                return null;
+                return { currentDir, visited: [] };
             }
 
             currentDir = parentDir;
@@ -639,6 +689,13 @@ export class ImportResolver implements ResolverLike {
     }
 }
 
+type InterfaceOf<T> = Pick<T, keyof T>;
+export type ImportResolver = InterfaceOf<ImportResolverImpl>;
+
 export function createImportResolver(options: ResolveImportOptions = {}): ImportResolver {
-    return new ImportResolver(options);
+    return ImportResolverImpl.createNew(options);
+}
+
+export function clearAllCaches() {
+    ImportResolverImpl.clearCaches();
 }
