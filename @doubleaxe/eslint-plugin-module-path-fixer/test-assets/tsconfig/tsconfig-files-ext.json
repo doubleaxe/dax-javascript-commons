@@ -3,8 +3,7 @@
   "compilerOptions": {
     "baseUrl": "./src",
     "paths": {
-      "#relative": ["./feature/relative.js"],
-      "#tool": ["./utils/tool.js"]
+      "$tool": ["./utils/tool.js"]
     }
   }
 }

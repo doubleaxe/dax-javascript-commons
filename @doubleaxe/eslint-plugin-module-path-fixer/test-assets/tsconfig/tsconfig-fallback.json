@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["./no-src/*", "./src/components/*", "./src/*"],
+      "$base": ["./no-src/base", "./src/components/base"],
+      "$base-value": ["./no-src/base", "./src/components/base/value"]
+    }
+  }
+}

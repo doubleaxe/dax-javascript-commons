@@ -1,8 +1,0 @@
-{
-  "name": "imports-proj",
-  "type": "module",
-  "imports": {
-    "#core/*": "./src/core/*",
-    "#core-mjs": "./src/core/core.mjs"
-  }
-}

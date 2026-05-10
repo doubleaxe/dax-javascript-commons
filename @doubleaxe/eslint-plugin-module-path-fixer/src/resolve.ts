@@ -53,6 +53,7 @@ export type ResolveImportOptions = {
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
+    resolveCacheTtl?: number;
     usePackageJson?: boolean;
     useTsConfig?: boolean | string | string[];
 };
@@ -282,6 +283,7 @@ export type ResolverLike = {
     resolve: (input: ResolveInput | ResolveInputDir) => null | ResolvedImport;
 };
 
+const FS_CACHE_TTL = 5_000;
 const RESOLVE_CACHE_TTL = 10_000;
 const CONFIG_CACHE_TTL = 30_000;
 class ImportResolverImpl implements ResolverLike {
@@ -289,26 +291,28 @@ class ImportResolverImpl implements ResolverLike {
     private enhancedResolver: Resolver | undefined;
     private readonly extensionAlias: ReverseExtensionAlias;
     private readonly absolutePathAlias: AbsolutePathAliasArray;
-    private readonly resolveCache = new LRUCache<string, { value: null | ResolvedImport }>({
-        max: 5_000,
-        ttl: RESOLVE_CACHE_TTL,
-    });
     private static readonly resolverCache = new LRUCache<string, ImportResolverImpl>({ max: 100 });
+    private static readonly fileSystem = new CachedInputFileSystem(fs, FS_CACHE_TTL);
+    private readonly resolveCache;
     // cannot be static, because uses options
     private readonly tsconfigCache = new LRUCache<string, { value: null | TsJsConfigCacheEntry }>({
-        max: 5_000,
+        max: 100,
         ttl: CONFIG_CACHE_TTL,
     });
-    private static readonly packageJsonCache = new LRUCache<string, { value: null | PackageJsonCacheEntry }>({
-        max: 5_000,
+    private readonly packageJsonCache = new LRUCache<string, { value: null | PackageJsonCacheEntry }>({
+        max: 100,
         ttl: CONFIG_CACHE_TTL,
     });
-    private static readonly fileSystem = new CachedInputFileSystem(fs, RESOLVE_CACHE_TTL);
 
     public constructor(options: NormaizedResolveImportOptions) {
         this.options = options;
         this.extensionAlias = buildReverseExtensionAliases(options.extensionAlias);
         this.absolutePathAlias = buildAbsoluteAliasOptions(options.manualTsConfigs);
+
+        this.resolveCache = new LRUCache<string, { value: null | ResolvedImport }>({
+            max: 5_000,
+            ttl: options.resolveCacheTtl,
+        });
     }
 
     public static createNew(options: ResolveImportOptions = {}): ImportResolverImpl {
@@ -318,6 +322,7 @@ class ImportResolverImpl implements ResolverLike {
             manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs),
             useTsConfig: options.useTsConfig ?? true,
             usePackageJson: options.usePackageJson ?? true,
+            resolveCacheTtl: options.resolveCacheTtl ?? RESOLVE_CACHE_TTL,
         };
         const key = toResolveCacheKey(normalizedOptions);
         let cached = ImportResolverImpl.resolverCache.get(key);
@@ -392,14 +397,14 @@ class ImportResolverImpl implements ResolverLike {
     }
 
     public getNearestPackageJson(fileDir: string): null | PackageJsonCacheEntry {
-        const cached = ImportResolverImpl.packageJsonCache.get(fileDir);
+        const cached = this.packageJsonCache.get(fileDir);
 
         if (cached !== undefined) {
             return cached.value;
         }
 
         const nearest = this.findNearestPackageJson(fileDir);
-        ImportResolverImpl.packageJsonCache.set(fileDir, { value: nearest });
+        this.packageJsonCache.set(fileDir, { value: nearest });
 
         return nearest;
     }
@@ -407,11 +412,14 @@ class ImportResolverImpl implements ResolverLike {
     public clearCache(): void {
         this.resolveCache.clear();
         this.tsconfigCache.clear();
+        this.packageJsonCache.clear();
     }
 
     public static clearCaches(): void {
+        for (const resolver of ImportResolverImpl.resolverCache.values()) {
+            resolver.clearCache();
+        }
         ImportResolverImpl.resolverCache.clear();
-        ImportResolverImpl.packageJsonCache.clear();
         ImportResolverImpl.fileSystem.purge();
     }
 
@@ -455,12 +463,14 @@ class ImportResolverImpl implements ResolverLike {
         let lastSuccessfullPath: string | undefined;
         const fileExists = (filePath: string) => {
             try {
-                ImportResolverImpl.fileSystem.statSync(filePath).isFile();
-                lastSuccessfullPath = filePath;
-                return true;
+                if (ImportResolverImpl.fileSystem.statSync(filePath).isFile()) {
+                    lastSuccessfullPath = filePath;
+                    return true;
+                }
             } catch {
-                return false;
+                /**/
             }
+            return false;
         };
         const extensions = [...this.options.extensions];
         const extension = path.extname(specifier);
@@ -538,25 +548,11 @@ class ImportResolverImpl implements ResolverLike {
                 ? ['tsconfig.json', 'jsconfig.json']
                 : arrayFromString(this.options.useTsConfig);
 
-        let currentDir = startDir;
-        let visited: string[] = [];
-        while (true) {
-            const {
-                currentDir: foundDir,
-                foundCached,
-                foundPath,
-                visited: currentlyVisited,
-            } = this.findNearestFile(currentDir, this.tsconfigCache, tsconfigName, visited);
-            visited = currentlyVisited;
-
-            if (foundCached) {
-                return foundCached.value;
-            }
-            if (!foundPath) {
-                return null;
-            }
-
-            try {
+        const foundObject = ImportResolverImpl.findNearestFile(
+            startDir,
+            this.tsconfigCache,
+            tsconfigName,
+            (foundPath) => {
                 const loaded = loadConfig(foundPath);
 
                 if (loaded.resultType === 'success') {
@@ -572,47 +568,22 @@ class ImportResolverImpl implements ResolverLike {
                         config: loaded,
                     };
 
-                    for (const dir of visited) {
-                        this.tsconfigCache.set(dir, { value: entry });
-                    }
-
                     return entry;
                 }
-            } catch {
-                /**/
-            }
 
-            currentDir = path.dirname(foundDir);
-            if (foundDir === currentDir) {
-                for (const dir of visited) {
-                    this.tsconfigCache.set(dir, { value: null });
-                }
                 return null;
             }
-        }
+        );
+
+        return foundObject;
     }
 
     private findNearestPackageJson(startDir: string): null | PackageJsonCacheEntry {
-        let currentDir = startDir;
-        let visited: string[] = [];
-
-        while (true) {
-            const {
-                currentDir: foundDir,
-                foundCached,
-                foundPath,
-                visited: currentlyVisited,
-            } = this.findNearestFile(currentDir, ImportResolverImpl.packageJsonCache, ['package.json'], visited);
-            visited = currentlyVisited;
-
-            if (foundCached) {
-                return foundCached.value;
-            }
-            if (!foundPath) {
-                return null;
-            }
-
-            try {
+        const foundObject = ImportResolverImpl.findNearestFile(
+            startDir,
+            this.packageJsonCache,
+            ['package.json'],
+            (foundPath) => {
                 const raw = fs.readFileSync(foundPath, 'utf8');
                 const content = JSON.parse(raw) as PackageJsonContent;
                 const entry: PackageJsonCacheEntry = {
@@ -623,40 +594,57 @@ class ImportResolverImpl implements ResolverLike {
                 const imports = buildPackageImportAliases(entry);
                 if (imports) entry.alias = buildAbsoluteAliasOptions([imports]);
 
-                for (const dir of visited) {
-                    ImportResolverImpl.packageJsonCache.set(dir, { value: entry });
-                }
-
                 return entry;
-            } catch {
-                /**/
             }
+        );
 
-            currentDir = path.dirname(foundDir);
-            if (foundDir === currentDir) {
-                for (const dir of visited) {
-                    ImportResolverImpl.packageJsonCache.set(dir, { value: null });
-                }
-                return null;
-            }
-        }
+        return foundObject;
     }
 
-    private findNearestFile<T>(
+    private static findNearestFile<T>(
         startDir: string,
         cache: LRUCache<string, { value: null | T }>,
         fileNames: string[],
-        visited: string[]
-    ): { currentDir: string; foundCached?: { value: null | T }; foundPath?: string; visited: string[] } {
-        let currentDir = startDir;
+        parserFn: (filePath: string, currentDir: string) => null | T
+    ): null | T {
         const fileExists = (filePath: string) => {
             try {
-                ImportResolverImpl.fileSystem.statSync(filePath).isFile();
-                return true;
+                if (ImportResolverImpl.fileSystem.statSync(filePath).isFile()) return true;
             } catch {
-                return false;
+                /**/
             }
+            return false;
         };
+
+        const relativeFileNames = [];
+        for (const fileName of fileNames) {
+            if (path.isAbsolute(fileName)) {
+                const memoized = cache.get(fileName);
+                if (memoized !== undefined) {
+                    if (memoized.value) return memoized.value;
+                    continue;
+                }
+
+                if (fileExists(fileName)) {
+                    try {
+                        const parsedObject = parserFn(fileName, path.dirname(fileName));
+                        if (parsedObject) {
+                            cache.set(fileName, { value: parsedObject });
+                            return parsedObject;
+                        }
+                    } catch {
+                        /**/
+                    }
+                }
+
+                cache.set(fileName, { value: null });
+            } else {
+                relativeFileNames.push(fileName);
+            }
+        }
+
+        let currentDir = startDir;
+        const visited: string[] = [];
 
         while (true) {
             const memoized = cache.get(currentDir);
@@ -664,15 +652,25 @@ class ImportResolverImpl implements ResolverLike {
                 for (const dir of visited) {
                     cache.set(dir, memoized);
                 }
-                return { currentDir, visited: [], foundCached: memoized };
+                return memoized.value;
             }
 
             visited.push(currentDir);
 
-            for (const fileName of fileNames) {
+            for (const fileName of relativeFileNames) {
                 const filePath = path.join(currentDir, fileName);
                 if (fileExists(filePath)) {
-                    return { currentDir, visited, foundPath: filePath };
+                    try {
+                        const parsedObject = parserFn(filePath, currentDir);
+                        if (parsedObject) {
+                            for (const dir of visited) {
+                                cache.set(dir, { value: parsedObject });
+                            }
+                            return parsedObject;
+                        }
+                    } catch {
+                        /**/
+                    }
                 }
             }
 
@@ -681,7 +679,7 @@ class ImportResolverImpl implements ResolverLike {
                 for (const dir of visited) {
                     cache.set(dir, { value: null });
                 }
-                return { currentDir, visited: [] };
+                return null;
             }
 
             currentDir = parentDir;

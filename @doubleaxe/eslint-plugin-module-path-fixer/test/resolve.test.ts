@@ -41,6 +41,11 @@ function mkTempProjectFromFixture(fixtureName: string): string {
     return root;
 }
 
+function useLocalProjectFromFixture(fixtureName: string): string {
+    const fixturePath = path.join(fixturesRoot, fixtureName);
+    return fixturePath;
+}
+
 afterEach(() => {
     while (tempRoots.length > 0) {
         const root = tempRoots.pop();
@@ -54,7 +59,7 @@ afterEach(() => {
 describe('ImportResolver', () => {
     describe('tsconfig', () => {
         it('caches nearest config', () => {
-            const root = mkTempProjectFromFixture('tsconfig');
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
             const siblingFile = path.join(root, 'src/feature/relative.ts');
 
@@ -67,7 +72,7 @@ describe('ImportResolver', () => {
         });
 
         it('ignores broken config', () => {
-            const root = mkTempProjectFromFixture('tsconfig');
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer1 = path.join(root, 'src/broken/importer.ts');
             const importer2 = path.join(root, 'src/feature/importer.ts');
 
@@ -82,8 +87,24 @@ describe('ImportResolver', () => {
             expect(nearestB?.path).toBe(tsconfig);
         });
 
+        it('can use absolute tsconfig', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const tsconfig1 = path.join(root, 'src/broken/tsconfig.txt');
+            const tsconfig2 = path.join(root, 'tsconfig.txt');
+
+            const resolver = createImportResolver({
+                useTsConfig: [tsconfig1, tsconfig2],
+            });
+
+            const nearestA = resolver.getNearestTsJsConfig(path.dirname(importer));
+
+            expect(nearestA).not.toBeNull();
+            expect(nearestA?.path).toBe(tsconfig2);
+        });
+
         it('can use extended tsconfig', () => {
-            const root = mkTempProjectFromFixture('tsconfig');
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
 
             const resolver = createImportResolver({
@@ -114,8 +135,8 @@ describe('ImportResolver', () => {
             expect(nearestA?.alias.some(({ name }) => name === '@app/*')).toBeTruthy();
         });
 
-        it('resolves aliases via nearest tsconfig paths without extensions', () => {
-            const root = mkTempProjectFromFixture('tsconfig');
+        it('resolves aliases without extensions', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
 
             let resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
@@ -140,48 +161,123 @@ describe('ImportResolver', () => {
 
             resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: 'base-value',
+                specifier: '$base-value',
             });
             target = path.join(root, 'src/components/base/value.js');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
-        it('resolves aliases via nearest tsconfig paths with extensions', () => {
-            const root = mkTempProjectFromFixture('alias');
+        it('resolves aliases with extensions', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/utils/tool.ts');
 
-            const resolver = createImportResolver({ extensions: ['.ts'] });
-            const resolved = resolver.resolve({
+            let resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '@app/utils/tool.js',
+                specifier: '@app/utils/tool.mjs',
+            });
+            let target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@base/value.js',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolver = createImportResolver({
+                extensions: ['.ts', '.js', '.mjs'],
+                useTsConfig: 'tsconfig-files-ext.json',
             });
 
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '$tool',
+            });
+            target = path.join(root, 'src/utils/tool.js');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
-        it('resolves aliases via nearest tsconfig paths with extension aliases', () => {
-            const root = mkTempProjectFromFixture('alias');
+        it('resolves aliases with extension aliases', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/utils/tool.ts');
 
-            const resolver = createImportResolver({ extensions: ['.ts'] });
-            const resolved = resolver.resolve({
+            const resolver = createImportResolver({
+                extensions: ['.ts', '.js'],
+                extensionAlias: { ts: 'js' },
+            });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@base/input.js',
+            });
+            let target = path.join(root, 'src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            // alias has priority
+            resolved = resolver.resolve({
                 importerFile: importer,
                 specifier: '@app/utils/tool.js',
             });
-
+            target = path.join(root, 'src/utils/tool.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
-        it('resolves aliases via nearest tsconfig paths for index files', () => {
-            const root = mkTempProjectFromFixture('tsconfig');
+        it('resolves aliases for index files', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
 
             const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/base',
+            });
+            let target = path.join(root, 'src/components/base/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/ext',
+            });
+            target = path.join(root, 'src/components/ext.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/ext/index',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/ext/index.js',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves fallback paths', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            const resolver = createImportResolver({
+                extensions: ['.ts', '.js'],
+                useTsConfig: 'tsconfig-fallback.json',
+            });
 
             let resolved = resolver.resolve({
                 importerFile: importer,
@@ -193,76 +289,65 @@ describe('ImportResolver', () => {
 
             resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '@app/components/tool',
+                specifier: '$base-value',
             });
-            target = path.join(root, 'src/utils/tool.ts');
+            target = path.join(root, 'src/components/base/value.js');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
-        });
 
-        it('resolves manual tsconfig aliases from resolver options', () => {
-            const root = mkTempProjectFromFixture('relative');
-            const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/utils/helper.ts');
-
-            const resolver = createImportResolver({
-                extensions: ['.ts'],
-                manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
-            });
-
-            const resolved = resolver.resolve({
+            resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '@manual/utils/helper',
+                specifier: '$base',
             });
-
+            target = path.join(root, 'src/components/base/index.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
-        it('resolves using matching entry from multiple manualTsConfigs', () => {
-            const root = mkTempProjectFromFixture('relative');
+        it('resolves manual aliases from resolver options', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/utils/helper.ts');
 
             const resolver = createImportResolver({
-                extensions: ['.ts'],
+                useTsConfig: false,
+                extensions: ['.ts', '.js'],
                 manualTsConfigs: [
-                    { baseUrl: root, paths: { '@other/*': ['src/other/*'] } },
-                    { baseUrl: root, paths: { '@manual/*': ['src/*'] } },
+                    {
+                        baseUrl: root,
+                        paths: { '@manual/*': ['src/*'], '$base': ['./no-src/base', './src/components/base'] },
+                    },
+                    { baseUrl: path.join(root, 'src'), paths: { '@manual-comp/*': ['./components/*'] } },
                 ],
             });
 
-            const resolved = resolver.resolve({
+            let resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '@manual/utils/helper',
+                specifier: '@manual/utils/tool',
             });
 
+            let target = path.join(root, 'src/utils/tool.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
-        });
 
-        it('resolves manual tsconfig aliases even when useTsConfig is disabled', () => {
-            const root = mkTempProjectFromFixture('relative');
-            const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/utils/helper.ts');
-
-            const resolver = createImportResolver({
-                extensions: ['.ts'],
-                useTsConfig: false,
-                manualTsConfigs: [{ baseUrl: root, paths: { '@manual/*': ['src/*'] } }],
-            });
-
-            const resolved = resolver.resolve({
+            resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '@manual/utils/helper',
+                specifier: '$base',
             });
+            target = path.join(root, 'src/components/base/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@manual-comp/ext.js',
+            });
+            target = path.join(root, 'src/components/ext.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
         it('respects useTsConfig flag', () => {
-            const aliasRoot = mkTempProjectFromFixture('alias');
+            const aliasRoot = useLocalProjectFromFixture('tsconfig');
             const aliasImporter = path.join(aliasRoot, 'src/feature/importer.ts');
 
             const aliasResolver = createImportResolver({ extensions: ['.ts'], useTsConfig: false });
@@ -274,33 +359,355 @@ describe('ImportResolver', () => {
             expect(aliasResolved).toBeNull();
         });
 
-        it('should not resolve foreign extensions', () => {
-            const root = mkTempProjectFromFixture('imports');
+        it('should not resolve disabled extensions', () => {
+            const root = useLocalProjectFromFixture('tsconfig');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/core/core.mjs');
 
-            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mts', '.mjs'] });
-            const resolved1 = resolver.resolve({
+            const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { mjs: 'mjjss' } });
+            let resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '#core/core.ts',
+                specifier: '@app/utils/tool',
             });
+            let target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
-            expect(resolved1).toBeNull();
-
-            const resolved2 = resolver.resolve({
+            resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '#core/core.mts',
+                specifier: '@app/utils/tool.mjjss',
             });
+            target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
-            expect(resolved2).not.toBeNull();
-            expect(resolved2?.resolvedFile).toBe(path.normalize(target));
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/base/input',
+            });
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/base/input.ts',
+            });
+            target = path.join(root, 'src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
         it('resolves tsconfig through directory symlink', () => {
             const root = mkTempRoot();
 
             const realDir = path.join(root, 'real');
-            copyDirectoryRecursive(path.join(fixturesRoot, 'alias'), realDir);
+            copyDirectoryRecursive(path.join(fixturesRoot, 'tsconfig'), realDir);
+
+            const linkDir = path.join(root, 'link');
+            fs.symlinkSync(realDir, linkDir, 'dir');
+
+            const resolver = createImportResolver({ extensions: ['.ts'] });
+            const importer = path.join(linkDir, 'src/feature/importer.ts');
+            const nearestA = resolver.getNearestTsJsConfig(importer);
+
+            const upperOne = path.join(linkDir, 'src/feature.ts');
+            const nearestB = resolver.getNearestTsJsConfig(upperOne);
+
+            expect(nearestA).not.toBeNull();
+            expect(nearestA).toBe(nearestB);
+            expect(nearestB?.path).toBe(path.join(linkDir, 'tsconfig.json'));
+        });
+
+        it('resolves imports through directory symlink', () => {
+            const root = mkTempRoot();
+
+            const realDir = path.join(root, 'real');
+            copyDirectoryRecursive(path.join(fixturesRoot, 'tsconfig'), realDir);
+
+            const linkDir = path.join(root, 'link');
+            fs.symlinkSync(realDir, linkDir, 'dir');
+
+            const importerLink = path.join(linkDir, 'src/feature/importer.ts');
+            const targetLink = path.join(linkDir, 'src/utils/tool.ts');
+
+            const resolver = createImportResolver({ extensions: ['.ts'] });
+            const first = resolver.resolve({
+                importerFile: importerLink,
+                specifier: '@app/utils/tool',
+            });
+
+            expect(first).not.toBeNull();
+            expect(first?.resolvedFile).toBe(path.normalize(targetLink));
+        });
+    });
+
+    describe('package.json', () => {
+        it('caches nearest config', () => {
+            const root = useLocalProjectFromFixture('package-imports');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const siblingFile = path.join(root, 'src/feature/relative.ts');
+
+            const resolver = createImportResolver();
+            const nearestA = resolver.getNearestPackageJson(path.dirname(importer));
+            const nearestB = resolver.getNearestPackageJson(path.dirname(siblingFile));
+
+            expect(nearestA).not.toBeNull();
+            expect(nearestA).toBe(nearestB);
+            expect(nearestA?.path).toBe(path.join(root, 'package.json'));
+        });
+
+        it('ignores broken config', () => {
+            const root = mkTempProjectFromFixture('package-imports');
+            const brokenDir = path.join(root, 'src/broken');
+            fs.mkdirSync(brokenDir, { recursive: true });
+            fs.writeFileSync(path.join(brokenDir, 'package.json'), '{ invalid json');
+
+            const importer1 = path.join(brokenDir, 'importer.ts');
+            const importer2 = path.join(root, 'src/feature/importer.ts');
+            const packageJson = path.join(root, 'package.json');
+
+            const resolver = createImportResolver();
+            const nearestA = resolver.getNearestPackageJson(path.dirname(importer1));
+            const nearestB = resolver.getNearestPackageJson(path.dirname(importer2));
+
+            expect(nearestA).not.toBeNull();
+            expect(nearestB).not.toBeNull();
+            expect(nearestA?.path).toBe(packageJson);
+            expect(nearestB?.path).toBe(packageJson);
+        });
+
+        it('resolves imports without extensions', () => {
+            const root = useLocalProjectFromFixture('package-imports');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#app/utils/tool',
+            });
+            let target = path.join(root, 'src/utils/tool.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/value',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base-value',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves imports with extensions', () => {
+            const root = useLocalProjectFromFixture('package-imports');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#app/utils/tool.mjs',
+            });
+            let target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/value.js',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#tool',
+            });
+            target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves *.js imports as js-only targets', () => {
+            const root = useLocalProjectFromFixture('package-imports');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            let resolver = createImportResolver({ extensions: ['.mjs', '.js'], extensionAlias: {} });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base-any/value',
+            });
+            let target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base/value.js',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base/value.mjs',
+            });
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base/input.ts',
+            });
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base/input.js',
+            });
+            expect(resolved).toBeNull();
+
+            resolver = createImportResolver({
+                extensions: ['.ts', '.js'],
+                extensionAlias: { ts: 'js' },
+            });
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base/input.js',
+            });
+            target = path.join(root, 'src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves imports with extension aliases', () => {
+            const root = useLocalProjectFromFixture('package-imports');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            const resolver = createImportResolver({
+                extensions: ['.ts', '.js'],
+                extensionAlias: { ts: 'js' },
+            });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/input.js',
+            });
+            let target = path.join(root, 'src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#app/utils/tool.js',
+            });
+            target = path.join(root, 'src/utils/tool.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves imports for index files', () => {
+            const root = useLocalProjectFromFixture('package-imports');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#base',
+            });
+            let target = path.join(root, 'src/components/base/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base',
+            });
+            target = path.join(root, 'src/components/base/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/ext',
+            });
+            target = path.join(root, 'src/components/ext.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/ext/index',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('respects usePackageJson flag', () => {
+            const aliasRoot = useLocalProjectFromFixture('package-imports');
+            const aliasImporter = path.join(aliasRoot, 'src/feature/importer.ts');
+
+            const aliasResolver = createImportResolver({ extensions: ['.ts'], usePackageJson: false });
+            const aliasResolved = aliasResolver.resolve({
+                importerFile: aliasImporter,
+                specifier: '#app/utils/tool',
+            });
+
+            expect(aliasResolved).toBeNull();
+        });
+
+        it('should not resolve disabled extensions', () => {
+            const root = useLocalProjectFromFixture('package-imports');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { mjs: 'mjjss' } });
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#app/utils/tool',
+            });
+            let target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#app/utils/tool.mjjss',
+            });
+            target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/input',
+            });
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/input.ts',
+            });
+            target = path.join(root, 'src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves package.json through directory symlink', () => {
+            const root = mkTempRoot();
+
+            const realDir = path.join(root, 'real');
+            copyDirectoryRecursive(path.join(fixturesRoot, 'package-imports'), realDir);
 
             const linkDir = path.join(root, 'link');
             fs.symlinkSync(realDir, linkDir, 'dir');
@@ -316,177 +723,190 @@ describe('ImportResolver', () => {
             expect(nearestA).toBe(nearestB);
             expect(nearestB?.path).toBe(path.join(linkDir, 'package.json'));
         });
-    });
 
-    describe('package.json', () => {
-        it('resolves #imports via nearest package.json imports and caches package location', () => {
-            const root = mkTempProjectFromFixture('imports');
-            const importer = path.join(root, 'src/feature/importer.ts');
-            const siblingFile = path.join(root, 'src/feature/another.ts');
-            const target = path.join(root, 'src/core/core.mjs');
+        it('resolves imports through directory symlink', () => {
+            const root = mkTempRoot();
 
-            const resolver = createImportResolver({ extensions: ['.ts'] });
-            const resolved1 = resolver.resolve({
-                importerFile: importer,
-                specifier: '#core/core.mjs',
-            });
+            const realDir = path.join(root, 'real');
+            copyDirectoryRecursive(path.join(fixturesRoot, 'package-imports'), realDir);
 
-            expect(resolved1).not.toBeNull();
-            expect(resolved1?.resolvedFile).toBe(path.normalize(target));
+            const linkDir = path.join(root, 'link');
+            fs.symlinkSync(realDir, linkDir, 'dir');
 
-            const resolved2 = resolver.resolve({
-                importerFile: importer,
-                specifier: '#core-mjs',
-            });
-            expect(resolved2).not.toBeNull();
-            expect(resolved2?.resolvedFile).toBe(path.normalize(target));
-
-            const nearestA = resolver.getNearestPackageJson(importer);
-            const nearestB = resolver.getNearestPackageJson(siblingFile);
-
-            expect(nearestA).not.toBeNull();
-            expect(nearestA).toBe(nearestB);
-        });
-
-        it('resolves explicit js specifiers through package imports to ts sources', () => {
-            const root = mkTempProjectFromFixture('imports');
-            const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/core/index.ts');
+            const importerLink = path.join(linkDir, 'src/feature/importer.ts');
+            const targetLink = path.join(linkDir, 'src/utils/tool.ts');
 
             const resolver = createImportResolver({ extensions: ['.ts'] });
-            const resolved1 = resolver.resolve({
-                importerFile: importer,
-                specifier: '#core/index.js',
+            const first = resolver.resolve({
+                importerFile: importerLink,
+                specifier: '#app/utils/tool',
             });
 
-            expect(resolved1).not.toBeNull();
-            expect(resolved1?.resolvedFile).toBe(path.normalize(target));
-        });
-
-        it('should not resolve foreign extensions', () => {
-            const root = mkTempProjectFromFixture('imports');
-            const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/core/core.mjs');
-
-            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mts', '.mjs'] });
-            const resolved1 = resolver.resolve({
-                importerFile: importer,
-                specifier: '#core/core.ts',
-            });
-
-            expect(resolved1).toBeNull();
-
-            const resolved2 = resolver.resolve({
-                importerFile: importer,
-                specifier: '#core/core.mts',
-            });
-
-            expect(resolved2).not.toBeNull();
-            expect(resolved2?.resolvedFile).toBe(path.normalize(target));
-        });
-
-        it('respects usePackageJson flag', () => {
-            const importsRoot = mkTempProjectFromFixture('imports');
-            const importsImporter = path.join(importsRoot, 'src/feature/importer.ts');
-
-            const importsResolver = createImportResolver({ extensions: ['.ts'], usePackageJson: false });
-            const importsResolved = importsResolver.resolve({
-                importerFile: importsImporter,
-                specifier: '#core/core.mjs',
-            });
-
-            expect(importsResolved).toBeNull();
+            expect(first).not.toBeNull();
+            expect(first?.resolvedFile).toBe(path.normalize(targetLink));
         });
     });
 
     describe('relative', () => {
-        it('resolves relative imports', () => {
-            const root = mkTempProjectFromFixture('relative');
+        it('resolves imports without extensions', () => {
+            const root = useLocalProjectFromFixture('relative');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/utils/helper.ts');
 
-            const resolver = createImportResolver({ extensions: ['.ts'] });
-            const resolved = resolver.resolve({
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '../utils/helper',
+                specifier: '../utils/tool',
             });
+            let target = path.join(root, 'src/utils/tool.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../components/base/value',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: './relative',
+            });
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
-        it('resolves explicit js specifiers to ts sources with the default extension aliases', () => {
-            const root = mkTempProjectFromFixture('relative');
+        it('resolves imports with extensions', () => {
+            const root = useLocalProjectFromFixture('relative');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/core/value.ts');
 
-            fs.rmSync(path.join(root, 'src/core/value.js'));
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
 
-            const resolver = createImportResolver({ extensions: ['.ts'] });
-            const resolved = resolver.resolve({
+            let resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '../core/value.js',
+                specifier: '../utils/tool.mjs',
             });
+            let target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../components/base/value.js',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: './relative.ts',
+            });
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
-        it('uses custom extension aliases when resolving explicit specifiers', () => {
-            const root = mkTempProjectFromFixture('relative');
+        it('resolves imports with extension aliases', () => {
+            const root = useLocalProjectFromFixture('relative');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const target = path.join(root, 'src/core/custom.ts');
-
-            fs.writeFileSync(target, 'export const custom = true;\n');
 
             const resolver = createImportResolver({
-                extensions: ['.ts'],
-                extensionAlias: { ts: 'jsx' },
-            });
-            const resolved = resolver.resolve({
-                importerFile: importer,
-                specifier: '../core/custom.jsx',
+                extensions: ['.ts', '.js'],
+                extensionAlias: { ts: 'js' },
             });
 
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../components/base/input.js',
+            });
+            let target = path.join(root, 'src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../utils/tool.js',
+            });
+            target = path.join(root, 'src/utils/tool.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
-        it('caches resolved import result and recomputes after clearCaches', () => {
-            const root = mkTempProjectFromFixture('relative');
+        it('resolves imports for index files', () => {
+            const root = useLocalProjectFromFixture('relative');
             const importer = path.join(root, 'src/feature/importer.ts');
-            const tsTarget = path.join(root, 'src/core/value.ts');
-            const jsTarget = path.join(root, 'src/core/value.js');
 
-            const resolver = createImportResolver({ extensions: ['.ts', '.js'] });
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
 
-            const first = resolver.resolve({
+            let resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '../core/value',
+                specifier: '../components/base',
             });
+            let target = path.join(root, 'src/components/base/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
-            expect(first).not.toBeNull();
-            expect(first?.resolvedFile).toBe(path.normalize(tsTarget));
-
-            fs.rmSync(tsTarget);
-
-            const second = resolver.resolve({
+            resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '../core/value',
+                specifier: '../components/ext',
             });
+            target = path.join(root, 'src/components/ext.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
-            expect(second).toBe(first);
-            expect(second?.resolvedFile).toBe(path.normalize(tsTarget));
-
-            clearAllCaches();
-
-            const third = resolver.resolve({
+            resolved = resolver.resolve({
                 importerFile: importer,
-                specifier: '../core/value',
+                specifier: '../components/ext/index',
             });
+            target = path.join(root, 'src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
-            expect(third).not.toBeNull();
-            expect(third?.resolvedFile).toBe(path.normalize(jsTarget));
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../components/ext/index.js',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('should not resolve disabled extensions', () => {
+            const root = useLocalProjectFromFixture('relative');
+            const importer = path.join(root, 'src/feature/importer.ts');
+
+            const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { mjs: 'mjjss' } });
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../utils/tool',
+            });
+            let target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../utils/tool.mjjss',
+            });
+            target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../components/base/input',
+            });
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '../components/base/input.ts',
+            });
+            target = path.join(root, 'src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
 
         it('resolves imports through directory symlink', () => {
@@ -499,15 +919,15 @@ describe('ImportResolver', () => {
             fs.symlinkSync(realDir, linkDir, 'dir');
 
             const importerReal = path.join(realDir, 'src/feature/importer.ts');
-            const targetReal = path.join(realDir, 'src/utils/helper.ts');
+            const targetReal = path.join(realDir, 'src/utils/tool.ts');
             const importerLink = path.join(linkDir, 'src/feature/importer.ts');
-            const targetLink = path.join(linkDir, 'src/utils/helper.ts');
+            const targetLink = path.join(linkDir, 'src/utils/tool.ts');
 
             // from link to link
             const resolver = createImportResolver({ extensions: ['.ts'] });
             const first = resolver.resolve({
                 importerFile: importerLink,
-                specifier: '../utils/helper',
+                specifier: '../utils/tool',
             });
 
             expect(first).not.toBeNull();
@@ -516,7 +936,7 @@ describe('ImportResolver', () => {
             // from real to link
             const second = resolver.resolve({
                 importerFile: importerReal,
-                specifier: '../../../link/src/utils/helper',
+                specifier: '../../../link/src/utils/tool',
             });
             expect(second).not.toBeNull();
             expect(second?.resolvedFile).toBe(path.normalize(targetLink));
@@ -524,10 +944,49 @@ describe('ImportResolver', () => {
             // from link to real
             const third = resolver.resolve({
                 importerFile: importerLink,
-                specifier: '../../../real/src/utils/helper',
+                specifier: '../../../real/src/utils/tool',
             });
             expect(third).not.toBeNull();
             expect(third?.resolvedFile).toBe(path.normalize(targetReal));
+        });
+    });
+
+    describe('other', () => {
+        it('caches resolved import result and recomputes after clearCaches', () => {
+            const root = mkTempProjectFromFixture('relative');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const tsTarget = path.join(root, 'src/utils/tool.ts');
+            const jsTarget = path.join(root, 'src/utils/tool.js');
+
+            const resolver = createImportResolver({ extensions: ['.ts', '.js'], resolveCacheTtl: 0 });
+
+            const first = resolver.resolve({
+                importerFile: importer,
+                specifier: '../utils/tool',
+            });
+
+            expect(first).not.toBeNull();
+            expect(first?.resolvedFile).toBe(path.normalize(tsTarget));
+
+            fs.rmSync(tsTarget);
+
+            const second = resolver.resolve({
+                importerFile: importer,
+                specifier: '../utils/tool',
+            });
+
+            expect(second).toBe(first);
+            expect(second?.resolvedFile).toBe(path.normalize(tsTarget));
+
+            clearAllCaches();
+
+            const third = resolver.resolve({
+                importerFile: importer,
+                specifier: '../utils/tool',
+            });
+
+            expect(third).not.toBeNull();
+            expect(third?.resolvedFile).toBe(path.normalize(jsTarget));
         });
     });
 });
