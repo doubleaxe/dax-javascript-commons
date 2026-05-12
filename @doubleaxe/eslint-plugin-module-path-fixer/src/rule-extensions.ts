@@ -14,7 +14,6 @@ import {
 type ExtensionsRuleOptions = {
     alias?: readonly ManualTsConfigEntry[];
     extension?: 'always' | 'never';
-    extensionMapping?: Readonly<Record<string, string>>;
     index?: 'always' | 'never';
 };
 
@@ -52,10 +51,6 @@ const schema: JSONSchema4 = {
                 },
             },
         },
-        extensionMapping: {
-            type: 'object',
-            additionalProperties: { type: 'string' },
-        },
     },
 };
 
@@ -84,10 +79,10 @@ export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
         const core = createExtensionsCore({
             preferExtension: ruleOptions.extension === 'always',
             preferDirectoryIndex: ruleOptions.index === 'always',
-            extensionMapping: ruleOptions.extensionMapping,
             extensionAlias: settings.extensionAlias,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
+            resolveCacheTtl: settings.resolveCacheTtl,
             usePackageJson: settings.usePackageJson,
             useTsConfig: settings.useTsConfig,
         });
@@ -103,7 +98,8 @@ export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
                 specifier: currentSpecifier,
             });
 
-            if (!decision || decision.nextSpecifier === currentSpecifier || !literalNode.range) {
+            const { nextSpecifier } = decision;
+            if (!nextSpecifier || nextSpecifier === currentSpecifier || !literalNode.range) {
                 return;
             }
 
@@ -112,13 +108,10 @@ export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
                 messageId: 'extensions',
                 data: {
                     currentSpecifier,
-                    nextSpecifier: decision.nextSpecifier,
+                    nextSpecifier,
                 },
                 fix: (fixer) =>
-                    fixer.replaceTextRange(
-                        literalNode.range,
-                        buildFixedLiteral(decision.nextSpecifier, literalNode.raw)
-                    ),
+                    fixer.replaceTextRange(literalNode.range, buildFixedLiteral(nextSpecifier, literalNode.raw)),
             });
         }
 

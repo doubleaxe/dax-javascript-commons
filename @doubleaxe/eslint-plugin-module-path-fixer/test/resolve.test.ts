@@ -157,6 +157,22 @@ describe('ImportResolver', () => {
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/base/../../utils/tool',
+            });
+            target = path.join(root, 'src/utils/tool.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/base/../ext/index',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
             resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'], useTsConfig: 'tsconfig-files.json' });
 
             resolved = resolver.resolve({
@@ -187,6 +203,22 @@ describe('ImportResolver', () => {
                 specifier: '@base/value.js',
             });
             target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/base/../../utils/tool.mjs',
+            });
+            target = path.join(root, 'src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '@components/base/../ext/index.ts',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
@@ -496,6 +528,22 @@ describe('ImportResolver', () => {
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
+            // enhanced resolver prevents it
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/../../utils/tool',
+            });
+            target = path.join(root, 'src/utils/tool.ts');
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/../ext/index',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
             resolved = resolver.resolve({
                 importerFile: importer,
                 specifier: '#base-value',
@@ -524,6 +572,22 @@ describe('ImportResolver', () => {
                 specifier: '#components/base/value.js',
             });
             target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            // enhanced resolver prevents it
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/../../utils/tool.mjs',
+            });
+            target = path.join(root, 'src/utils/tool.ts');
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: '#components/base/../ext/index.ts',
+            });
+            target = path.join(root, 'src/components/ext/index.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
 
@@ -772,8 +836,17 @@ describe('ImportResolver', () => {
 
             resolved = resolver.resolve({
                 importerFile: importer,
+                specifier: '../../../relative/src/components/base/value',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
                 specifier: './relative',
             });
+            target = path.join(root, 'src/feature/relative.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
@@ -802,8 +875,17 @@ describe('ImportResolver', () => {
 
             resolved = resolver.resolve({
                 importerFile: importer,
+                specifier: '../../../relative/src/components/base/value.js',
+            });
+            target = path.join(root, 'src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
                 specifier: './relative.ts',
             });
+            target = path.join(root, 'src/feature/relative.ts');
             expect(resolved).not.toBeNull();
             expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
@@ -948,6 +1030,161 @@ describe('ImportResolver', () => {
             });
             expect(third).not.toBeNull();
             expect(third?.resolvedFile).toBe(path.normalize(targetReal));
+        });
+    });
+
+    describe('absolute', () => {
+        it('resolves imports without extensions', () => {
+            const root = useLocalProjectFromFixture('relative');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const absolute = (relativePath: string) => path.join(root, relativePath);
+
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/utils/tool'),
+            });
+            let target = absolute('src/utils/tool.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/../../src/components/base/value'),
+            });
+            target = absolute('src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves imports with extensions', () => {
+            const root = useLocalProjectFromFixture('relative');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const absolute = (relativePath: string) => path.join(root, relativePath);
+
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/utils/tool.mjs'),
+            });
+            let target = absolute('src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/../../src/components/base/value.js'),
+            });
+            target = absolute('src/components/base/value.js');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves imports with extension aliases', () => {
+            const root = useLocalProjectFromFixture('relative');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const absolute = (relativePath: string) => path.join(root, relativePath);
+
+            const resolver = createImportResolver({
+                extensions: ['.ts', '.js'],
+                extensionAlias: { ts: 'js' },
+            });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/base/input.js'),
+            });
+            let target = absolute('src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/utils/tool.js'),
+            });
+            target = absolute('src/utils/tool.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('resolves imports for index files', () => {
+            const root = useLocalProjectFromFixture('relative');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const absolute = (relativePath: string) => path.join(root, relativePath);
+
+            const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/base'),
+            });
+            let target = absolute('src/components/base/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/ext'),
+            });
+            target = absolute('src/components/ext.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/ext/index'),
+            });
+            target = absolute('src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/ext/index.js'),
+            });
+            target = absolute('src/components/ext/index.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        });
+
+        it('should not resolve disabled extensions', () => {
+            const root = useLocalProjectFromFixture('relative');
+            const importer = path.join(root, 'src/feature/importer.ts');
+            const absolute = (relativePath: string) => path.join(root, relativePath);
+
+            const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { mjs: 'mjjss' } });
+
+            let resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/utils/tool'),
+            });
+            let target = absolute('src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/utils/tool.mjjss'),
+            });
+            target = absolute('src/utils/tool.mjs');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/base/input'),
+            });
+            expect(resolved).toBeNull();
+
+            resolved = resolver.resolve({
+                importerFile: importer,
+                specifier: absolute('src/components/base/input.ts'),
+            });
+            target = absolute('src/components/base/input.ts');
+            expect(resolved).not.toBeNull();
+            expect(resolved?.resolvedFile).toBe(path.normalize(target));
         });
     });
 

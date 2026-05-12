@@ -6,8 +6,9 @@ export type ModulePathFixerSettings = {
     alias?: readonly ManualTsConfigEntry[];
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
+    resolveCacheTtl?: number;
     usePackageJson?: boolean;
-    useTsConfig?: boolean;
+    useTsConfig?: boolean | readonly string[] | string;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -36,13 +37,20 @@ export function parseModulePathFixerSettings(settingsInput: unknown): ModulePath
     const extensions = Array.isArray(namespace['extensions'])
         ? (namespace['extensions'] as readonly string[])
         : undefined;
+    const resolveCacheTtl = typeof namespace['resolveCacheTtl'] === 'number' ? namespace['resolveCacheTtl'] : undefined;
     const usePackageJson = typeof namespace['usePackageJson'] === 'boolean' ? namespace['usePackageJson'] : undefined;
-    const useTsConfig = typeof namespace['useTsConfig'] === 'boolean' ? namespace['useTsConfig'] : undefined;
+    const useTsConfig =
+        typeof namespace['useTsConfig'] === 'boolean' ||
+        typeof namespace['useTsConfig'] === 'string' ||
+        Array.isArray(namespace['useTsConfig'])
+            ? namespace['useTsConfig']
+            : undefined;
 
     return {
         alias,
         extensionAlias,
         extensions,
+        resolveCacheTtl,
         usePackageJson,
         useTsConfig,
     };

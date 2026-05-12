@@ -1,4 +1,4 @@
-import * as path from 'node:path';
+import * as path from 'node:path/posix';
 
 export function normalizePath(value: string): string {
     const p = value.replaceAll('\\', '/');
@@ -34,7 +34,7 @@ export function normalizePath(value: string): string {
         processed = processed.slice(slash + 1);
     }
 
-    let remainder = path.posix.normalize(processed);
+    let remainder = path.normalize(processed);
     if (remainder === '.' || remainder === './') remainder = '';
 
     let normalized = root + remainder;

@@ -1,21 +1,18 @@
-import type { ManualTsConfigEntry, ResolvedImport } from '../../resolve.js';
+import type { ManualTsConfigEntry } from '../../resolve.js';
 
 export type ExtensionsCoreOptions = {
     extensionAlias?: Readonly<Record<string, string>>;
-    extensionMapping?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     preferDirectoryIndex?: boolean;
     preferExtension?: boolean;
+    resolveCacheTtl?: number;
     usePackageJson?: boolean;
-    useTsConfig?: boolean;
+    useTsConfig?: boolean | readonly string[] | string;
 };
 
-export type ExtensionsDecisionReason = 'extension-and-index' | 'extension' | 'index';
-
 export type ExtensionsDecision = {
-    kind: 'rewrite';
-    nextSpecifier: string;
-    reason: ExtensionsDecisionReason;
-    resolved: ResolvedImport;
+    nextSpecifier?: string;
+    reason: 'changed' | 'unchanged' | 'unresolved' | 'unsafe';
+    resolvedFile?: string;
 };

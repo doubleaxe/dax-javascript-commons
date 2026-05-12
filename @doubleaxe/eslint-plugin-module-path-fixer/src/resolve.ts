@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as path from 'node:path/posix';
 
 import type { Resolver } from 'enhanced-resolve';
 import enhancedResolve, { CachedInputFileSystem } from 'enhanced-resolve';
@@ -40,7 +40,9 @@ export type ManualTsConfigEntry = {
 export type AbsolutePathAliasArray = { alias: string[]; name: string }[];
 
 export type ResolveInput = {
+    // system separator
     importerFile: string;
+    // normalized to posix
     specifier: string;
 };
 
@@ -50,12 +52,13 @@ export type ResolveInputDir = {
 };
 
 export type ResolveImportOptions = {
+    errorLog?: boolean;
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     resolveCacheTtl?: number;
     usePackageJson?: boolean;
-    useTsConfig?: boolean | string | string[];
+    useTsConfig?: boolean | readonly string[] | string;
 };
 
 type NormaizedResolveImportOptions = Required<ResolveImportOptions>;
@@ -112,16 +115,20 @@ function normalizeManualTsConfigs(
 }
 
 function normalizeResolvedAliasTarget(baseUrl: string, target: string): string {
-    return normalizePath(path.isAbsolute(target) ? target : path.resolve(baseUrl, target));
+    const isAbsolute = path.posix.isAbsolute(target) || path.win32.isAbsolute(target);
+    return normalizePath(isAbsolute ? target : path.join(baseUrl, target));
 }
 
 function buildAbsoluteAliasOptions(manualTsConfigs: readonly ManualTsConfigEntry[]): AbsolutePathAliasArray {
     const aliasOptions: AbsolutePathAliasArray = [];
 
     for (const manualTsConfig of manualTsConfigs) {
-        const baseUrl = path.isAbsolute(manualTsConfig.baseUrl)
-            ? manualTsConfig.baseUrl
-            : path.resolve(process.cwd(), manualTsConfig.baseUrl);
+        const normalizedBaseUrl = normalizePath(manualTsConfig.baseUrl);
+        const baseUrl =
+            path.posix.isAbsolute(normalizedBaseUrl) || path.win32.isAbsolute(normalizedBaseUrl)
+                ? normalizedBaseUrl
+                : normalizePath(path.join(process.cwd(), manualTsConfig.baseUrl));
+
         for (const [alias, aliasPaths] of Object.entries(manualTsConfig.paths)) {
             const resolvedTargets = aliasPaths.map((aliasPath) => normalizeResolvedAliasTarget(baseUrl, aliasPath));
             aliasOptions.push({
@@ -141,16 +148,39 @@ function normalizeExtensionToken(value: string): string {
     return withoutDot.trim();
 }
 
-function buildReverseExtensionAliases(extensionAlias: Readonly<Record<string, string>>): ReverseExtensionAlias {
-    const reverseAlias: Record<string, string[]> = {};
-    const aliasEntries = Object.entries(extensionAlias);
+function normalizeExtensionAliases(
+    extensionAlias: Readonly<Record<string, string>> | undefined
+): Readonly<Record<string, string>> {
+    if (!extensionAlias) {
+        return DEFAULT_EXTENSION_ALIAS;
+    }
 
-    for (const [sourceExtension, targetExtension] of aliasEntries) {
+    const normalized: Record<string, string> = {};
+    for (const [sourceExtension, targetExtension] of Object.entries(extensionAlias)) {
+        if (typeof sourceExtension !== 'string' || typeof targetExtension !== 'string') {
+            continue;
+        }
+
         const normalizedSource = normalizeExtensionToken(sourceExtension);
         const normalizedTarget = normalizeExtensionToken(targetExtension);
         if (!normalizedSource || !normalizedTarget) {
             continue;
         }
+
+        normalized[normalizedSource] = normalizedTarget;
+    }
+
+    return normalized;
+}
+
+function buildReverseExtensionAliases(extensionAlias: Readonly<Record<string, string>>): ReverseExtensionAlias {
+    const reverseAlias: Record<string, string[]> = {};
+    const aliasEntries = Object.entries(extensionAlias);
+
+    for (const [sourceExtension, targetExtension] of aliasEntries) {
+        // already normalized
+        const normalizedSource = sourceExtension;
+        const normalizedTarget = targetExtension;
 
         reverseAlias[normalizedTarget] ??= [];
 
@@ -184,10 +214,6 @@ function collectImportTargets(value: unknown): string[] {
     return [];
 }
 
-function normalizePackageImportTarget(value: string): string {
-    return normalizePath(value).replace(/^\.\/+/, '');
-}
-
 function buildPackageImportAliases(packageJson: PackageJsonCacheEntry): ManualTsConfigEntry | null {
     const imports = packageJson.content.imports;
     if (!imports || typeof imports !== 'object') {
@@ -200,12 +226,10 @@ function buildPackageImportAliases(packageJson: PackageJsonCacheEntry): ManualTs
             continue;
         }
 
-        const targets = collectImportTargets(targetConfig)
-            .map(normalizePackageImportTarget)
-            .filter((target) => target.length > 0);
+        const targets = collectImportTargets(targetConfig).filter((target) => target);
 
         if (targets.length > 0) {
-            paths[specifier] = [...new Set(targets)];
+            paths[specifier] = targets;
         }
     }
 
@@ -214,6 +238,7 @@ function buildPackageImportAliases(packageJson: PackageJsonCacheEntry): ManualTs
     }
 
     return {
+        // path is normalized
         baseUrl: path.dirname(packageJson.path),
         paths,
     };
@@ -271,6 +296,7 @@ function toResolveCacheKey(options: NormaizedResolveImportOptions): string {
     return [
         options.extensions.join(','),
         serializeExtensionAliases(options.extensionAlias),
+        String(options.resolveCacheTtl),
         String(options.useTsConfig),
         String(options.usePackageJson),
         serializeManualTsConfigs(options.manualTsConfigs),
@@ -280,6 +306,8 @@ function toResolveCacheKey(options: NormaizedResolveImportOptions): string {
 export type ResolverLike = {
     clearCache: () => void;
     getAliasMappings: (filePath: string) => AbsolutePathAliasArray;
+    getExtensionAliases: () => Readonly<Record<string, string>>;
+    // resolved file normalized to posix separator
     resolve: (input: ResolveInput | ResolveInputDir) => null | ResolvedImport;
 };
 
@@ -317,7 +345,8 @@ class ImportResolverImpl implements ResolverLike {
 
     public static createNew(options: ResolveImportOptions = {}): ImportResolverImpl {
         const normalizedOptions: NormaizedResolveImportOptions = {
-            extensionAlias: options.extensionAlias ?? DEFAULT_EXTENSION_ALIAS,
+            errorLog: options.errorLog ?? false,
+            extensionAlias: normalizeExtensionAliases(options.extensionAlias),
             extensions: options.extensions ?? DEFAULT_EXTENSIONS,
             manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs),
             useTsConfig: options.useTsConfig ?? true,
@@ -336,10 +365,14 @@ class ImportResolverImpl implements ResolverLike {
         return cached;
     }
 
+    public getExtensionAliases(): Readonly<Record<string, string>> {
+        return this.options.extensionAlias;
+    }
+
     public resolve(input: ResolveInput | ResolveInputDir): null | ResolvedImport {
         const importerDir =
             'importerFile' in input
-                ? normalizePath(path.dirname(input.importerFile))
+                ? path.dirname(normalizePath(input.importerFile))
                 : normalizePath(input.importerDir);
         const normalizedInput = {
             importerDir,
@@ -367,14 +400,14 @@ class ImportResolverImpl implements ResolverLike {
         const mappings: AbsolutePathAliasArray = [...this.absolutePathAlias];
 
         if (this.options.useTsConfig) {
-            const nearestTsConfig = this.getNearestTsJsConfig(fileDir);
+            const nearestTsConfig = this.getNearestTsJsConfig(fileDir, true);
             if (nearestTsConfig) {
                 mappings.push(...nearestTsConfig.alias);
             }
         }
 
         if (usePackageJson && this.options.usePackageJson) {
-            const nearestPackageJson = this.getNearestPackageJson(fileDir);
+            const nearestPackageJson = this.getNearestPackageJson(fileDir, true);
             if (nearestPackageJson) {
                 mappings.push(...nearestPackageJson.alias);
             }
@@ -383,7 +416,8 @@ class ImportResolverImpl implements ResolverLike {
         return mergeAliasMappings(mappings);
     }
 
-    public getNearestTsJsConfig(fileDir: string): null | TsJsConfigCacheEntry {
+    public getNearestTsJsConfig(fileDir: string, skipNormalize?: boolean): null | TsJsConfigCacheEntry {
+        if (!skipNormalize) fileDir = normalizePath(fileDir);
         const cached = this.tsconfigCache.get(fileDir);
 
         if (cached !== undefined) {
@@ -396,7 +430,8 @@ class ImportResolverImpl implements ResolverLike {
         return nearest;
     }
 
-    public getNearestPackageJson(fileDir: string): null | PackageJsonCacheEntry {
+    public getNearestPackageJson(fileDir: string, skipNormalize?: boolean): null | PackageJsonCacheEntry {
+        if (!skipNormalize) fileDir = normalizePath(fileDir);
         const cached = this.packageJsonCache.get(fileDir);
 
         if (cached !== undefined) {
@@ -427,7 +462,7 @@ class ImportResolverImpl implements ResolverLike {
         const importerDir = input.importerDir;
         const specifier = input.specifier;
 
-        if (!specifier || !path.isAbsolute(importerDir)) {
+        if (!specifier || (!path.posix.isAbsolute(importerDir) && !path.win32.isAbsolute(importerDir))) {
             return null;
         }
 
@@ -487,14 +522,14 @@ class ImportResolverImpl implements ResolverLike {
                         fileExists,
                         extensions
                     );
-                    if (resolved) return lastSuccessfullPath;
+                    if (resolved) return lastSuccessfullPath ? normalizePath(lastSuccessfullPath) : undefined;
                 }
                 return undefined;
             }
         }
 
         const resolved = matchFromAbsolutePaths(absolutePathMappings, specifier, readJson, fileExists, extensions);
-        if (resolved) return lastSuccessfullPath;
+        if (resolved) return lastSuccessfullPath ? normalizePath(lastSuccessfullPath) : undefined;
         return undefined;
     }
 
@@ -534,14 +569,15 @@ class ImportResolverImpl implements ResolverLike {
         try {
             const resolved = resolver.resolveSync(importerDir, specifier);
             return resolved ? normalizePath(resolved) : undefined;
-        } catch {
+        } catch (err) {
+            if (this.options.errorLog) console.error(err);
             return undefined;
         }
     }
 
     private findNearestTsJsConfig(startDir: string): null | TsJsConfigCacheEntry {
-        const arrayFromString = (s: string | string[]) => {
-            return Array.isArray(s) ? s : [s];
+        const arrayFromString = (s: readonly string[] | string) => {
+            return Array.isArray(s) ? (s as readonly string[]) : ([s] as readonly string[]);
         };
         const tsconfigName =
             typeof this.options.useTsConfig === 'boolean'
@@ -572,7 +608,8 @@ class ImportResolverImpl implements ResolverLike {
                 }
 
                 return null;
-            }
+            },
+            this.options.errorLog
         );
 
         return foundObject;
@@ -595,7 +632,8 @@ class ImportResolverImpl implements ResolverLike {
                 if (imports) entry.alias = buildAbsoluteAliasOptions([imports]);
 
                 return entry;
-            }
+            },
+            this.options.errorLog
         );
 
         return foundObject;
@@ -604,8 +642,9 @@ class ImportResolverImpl implements ResolverLike {
     private static findNearestFile<T>(
         startDir: string,
         cache: LRUCache<string, { value: null | T }>,
-        fileNames: string[],
-        parserFn: (filePath: string, currentDir: string) => null | T
+        fileNames: readonly string[],
+        parserFn: (filePath: string, currentDir: string) => null | T,
+        errorLog?: boolean
     ): null | T {
         const fileExists = (filePath: string) => {
             try {
@@ -618,7 +657,7 @@ class ImportResolverImpl implements ResolverLike {
 
         const relativeFileNames = [];
         for (const fileName of fileNames) {
-            if (path.isAbsolute(fileName)) {
+            if (path.posix.isAbsolute(fileName) || path.win32.isAbsolute(fileName)) {
                 const memoized = cache.get(fileName);
                 if (memoized !== undefined) {
                     if (memoized.value) return memoized.value;
@@ -632,8 +671,8 @@ class ImportResolverImpl implements ResolverLike {
                             cache.set(fileName, { value: parsedObject });
                             return parsedObject;
                         }
-                    } catch {
-                        /**/
+                    } catch (err) {
+                        if (errorLog) console.error(err);
                     }
                 }
 
@@ -668,8 +707,8 @@ class ImportResolverImpl implements ResolverLike {
                             }
                             return parsedObject;
                         }
-                    } catch {
-                        /**/
+                    } catch (err) {
+                        if (errorLog) console.error(err);
                     }
                 }
             }
