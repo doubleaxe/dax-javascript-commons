@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { normalizePath } from '../src/normalizer.js';
 import { clearAllCaches, createImportResolver } from '../src/resolve.js';
 import { useTempFiles } from './util.js';
 
@@ -27,7 +28,7 @@ describe('resolve.relative', () => {
         });
         let target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -35,7 +36,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -43,7 +44,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -51,7 +52,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/feature/relative.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports with extensions', () => {
@@ -66,7 +67,7 @@ describe('resolve.relative', () => {
         });
         let target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -74,7 +75,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -82,7 +83,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -90,7 +91,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/feature/relative.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports with extension aliases', () => {
@@ -108,7 +109,7 @@ describe('resolve.relative', () => {
         });
         let target = path.join(root, 'src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -116,7 +117,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports for index files', () => {
@@ -131,7 +132,7 @@ describe('resolve.relative', () => {
         });
         let target = path.join(root, 'src/components/base/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -139,7 +140,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/ext.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -147,7 +148,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -155,7 +156,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('should not resolve disabled extensions', () => {
@@ -169,7 +170,7 @@ describe('resolve.relative', () => {
         });
         let target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -177,7 +178,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -191,7 +192,7 @@ describe('resolve.relative', () => {
         });
         target = path.join(root, 'src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports through directory symlink', () => {
@@ -216,7 +217,7 @@ describe('resolve.relative', () => {
         });
 
         expect(first).not.toBeNull();
-        expect(first?.resolvedFile).toBe(path.normalize(targetLink));
+        expect(first?.resolvedFile).toBe(normalizePath(targetLink));
 
         // from real to link
         const second = resolver.resolve({
@@ -224,7 +225,7 @@ describe('resolve.relative', () => {
             specifier: '../../../link/src/utils/tool',
         });
         expect(second).not.toBeNull();
-        expect(second?.resolvedFile).toBe(path.normalize(targetLink));
+        expect(second?.resolvedFile).toBe(normalizePath(targetLink));
 
         // from link to real
         const third = resolver.resolve({
@@ -232,6 +233,6 @@ describe('resolve.relative', () => {
             specifier: '../../../real/src/utils/tool',
         });
         expect(third).not.toBeNull();
-        expect(third?.resolvedFile).toBe(path.normalize(targetReal));
+        expect(third?.resolvedFile).toBe(normalizePath(targetReal));
     });
 });

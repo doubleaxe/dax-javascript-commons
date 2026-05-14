@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { normalizePath } from '../src/normalizer.js';
 import { clearAllCaches, createImportResolver } from '../src/resolve.js';
 import { useTempFiles } from './util.js';
 
@@ -32,7 +33,7 @@ describe('resolve.package-imports', () => {
 
         expect(nearestA).not.toBeNull();
         expect(nearestA).toBe(nearestB);
-        expect(nearestA?.path).toBe(path.join(root, 'package.json'));
+        expect(nearestA?.path).toBe(normalizePath(path.join(root, 'package.json')));
     });
 
     it('ignores broken config', () => {
@@ -43,7 +44,7 @@ describe('resolve.package-imports', () => {
 
         const importer1 = path.join(brokenDir, 'importer.ts');
         const importer2 = path.join(root, 'src/feature/importer.ts');
-        const packageJson = path.join(root, 'package.json');
+        const packageJson = normalizePath(path.join(root, 'package.json'));
 
         const resolver = createImportResolver();
         const nearestA = resolver.getNearestPackageJson(path.dirname(importer1));
@@ -67,7 +68,7 @@ describe('resolve.package-imports', () => {
         });
         let target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -75,7 +76,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         // enhanced resolver prevents it
         resolved = resolver.resolve({
@@ -91,7 +92,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -99,7 +100,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports with extensions', () => {
@@ -114,7 +115,7 @@ describe('resolve.package-imports', () => {
         });
         let target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -122,7 +123,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         // enhanced resolver prevents it
         resolved = resolver.resolve({
@@ -138,7 +139,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -146,7 +147,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves *.js imports as js-only targets', () => {
@@ -161,7 +162,7 @@ describe('resolve.package-imports', () => {
         });
         let target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -169,7 +170,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -199,7 +200,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports with extension aliases', () => {
@@ -217,7 +218,7 @@ describe('resolve.package-imports', () => {
         });
         let target = path.join(root, 'src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -225,7 +226,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports for index files', () => {
@@ -240,7 +241,7 @@ describe('resolve.package-imports', () => {
         });
         let target = path.join(root, 'src/components/base/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -248,7 +249,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/base/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -256,7 +257,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/ext.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -264,7 +265,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('respects usePackageJson flag', () => {
@@ -291,7 +292,7 @@ describe('resolve.package-imports', () => {
         });
         let target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -299,7 +300,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -313,7 +314,7 @@ describe('resolve.package-imports', () => {
         });
         target = path.join(root, 'src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves package.json through directory symlink', () => {
@@ -334,7 +335,7 @@ describe('resolve.package-imports', () => {
 
         expect(nearestA).not.toBeNull();
         expect(nearestA).toBe(nearestB);
-        expect(nearestB?.path).toBe(path.join(linkDir, 'package.json'));
+        expect(nearestB?.path).toBe(normalizePath(path.join(linkDir, 'package.json')));
     });
 
     it('resolves imports through directory symlink', () => {
@@ -356,6 +357,6 @@ describe('resolve.package-imports', () => {
         });
 
         expect(first).not.toBeNull();
-        expect(first?.resolvedFile).toBe(path.normalize(targetLink));
+        expect(first?.resolvedFile).toBe(normalizePath(path.normalize(targetLink)));
     });
 });

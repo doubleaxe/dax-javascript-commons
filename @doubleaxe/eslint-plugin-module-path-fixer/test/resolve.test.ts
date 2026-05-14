@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { normalizePath } from '../src/normalizer.js';
 import { clearAllCaches, createImportResolver } from '../src/resolve.js';
 import { useTempFiles } from './util.js';
 
@@ -28,7 +29,7 @@ describe('resolve', () => {
         });
 
         expect(first).not.toBeNull();
-        expect(first?.resolvedFile).toBe(path.normalize(tsTarget));
+        expect(first?.resolvedFile).toBe(normalizePath(tsTarget));
 
         fs.rmSync(tsTarget);
 
@@ -38,7 +39,7 @@ describe('resolve', () => {
         });
 
         expect(second).toBe(first);
-        expect(second?.resolvedFile).toBe(path.normalize(tsTarget));
+        expect(second?.resolvedFile).toBe(normalizePath(tsTarget));
 
         clearAllCaches();
 
@@ -48,6 +49,6 @@ describe('resolve', () => {
         });
 
         expect(third).not.toBeNull();
-        expect(third?.resolvedFile).toBe(path.normalize(jsTarget));
+        expect(third?.resolvedFile).toBe(normalizePath(jsTarget));
     });
 });

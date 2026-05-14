@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { normalizePath } from '../src/normalizer.js';
 import { clearAllCaches, createImportResolver } from '../src/resolve.js';
 import { useTempFiles } from './util.js';
 
@@ -36,7 +37,7 @@ describe('resolve.tsconfig', () => {
         const resolver = createImportResolver({ useTsConfig: 'tsconfig.txt' });
         const nearestA = resolver.getNearestTsJsConfig(path.dirname(importer1));
         const nearestB = resolver.getNearestTsJsConfig(path.dirname(importer2));
-        const tsconfig = path.join(root, 'tsconfig.txt');
+        const tsconfig = normalizePath(path.join(root, 'tsconfig.txt'));
 
         expect(nearestA).not.toBeNull();
         expect(nearestB).not.toBeNull();
@@ -57,7 +58,7 @@ describe('resolve.tsconfig', () => {
         const nearestA = resolver.getNearestTsJsConfig(path.dirname(importer));
 
         expect(nearestA).not.toBeNull();
-        expect(nearestA?.path).toBe(tsconfig2);
+        expect(nearestA?.path).toBe(normalizePath(tsconfig2));
     });
 
     it('can use extended tsconfig', () => {
@@ -75,7 +76,7 @@ describe('resolve.tsconfig', () => {
         });
         let target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -83,7 +84,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         const nearestA = resolver.getNearestTsJsConfig(path.dirname(importer));
         const tsconfig = path.join(root, 'tsconfig-extends.json');
@@ -104,7 +105,7 @@ describe('resolve.tsconfig', () => {
         });
         let target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -112,7 +113,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -120,7 +121,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -128,7 +129,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'], useTsConfig: 'tsconfig-files.json' });
 
@@ -138,7 +139,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves aliases with extensions', () => {
@@ -153,7 +154,7 @@ describe('resolve.tsconfig', () => {
         });
         let target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -161,7 +162,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -169,7 +170,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -177,7 +178,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolver = createImportResolver({
             extensions: ['.ts', '.js', '.mjs'],
@@ -190,7 +191,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/utils/tool.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves aliases with extension aliases', () => {
@@ -208,7 +209,7 @@ describe('resolve.tsconfig', () => {
         });
         let target = path.join(root, 'src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         // alias has priority
         resolved = resolver.resolve({
@@ -217,7 +218,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves aliases for index files', () => {
@@ -232,7 +233,7 @@ describe('resolve.tsconfig', () => {
         });
         let target = path.join(root, 'src/components/base/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -240,7 +241,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/ext.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -248,7 +249,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -256,7 +257,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves fallback paths', () => {
@@ -274,7 +275,7 @@ describe('resolve.tsconfig', () => {
         });
         let target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -282,7 +283,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -290,7 +291,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves manual aliases from resolver options', () => {
@@ -316,7 +317,7 @@ describe('resolve.tsconfig', () => {
 
         let target = path.join(root, 'src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -324,7 +325,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -332,7 +333,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/ext.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('respects useTsConfig flag', () => {
@@ -359,7 +360,7 @@ describe('resolve.tsconfig', () => {
         });
         let target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -367,7 +368,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -381,7 +382,7 @@ describe('resolve.tsconfig', () => {
         });
         target = path.join(root, 'src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves tsconfig through directory symlink', () => {
@@ -402,7 +403,7 @@ describe('resolve.tsconfig', () => {
 
         expect(nearestA).not.toBeNull();
         expect(nearestA).toBe(nearestB);
-        expect(nearestB?.path).toBe(path.join(linkDir, 'tsconfig.json'));
+        expect(nearestB?.path).toBe(normalizePath(path.join(linkDir, 'tsconfig.json')));
     });
 
     it('resolves imports through directory symlink', () => {
@@ -424,6 +425,6 @@ describe('resolve.tsconfig', () => {
         });
 
         expect(first).not.toBeNull();
-        expect(first?.resolvedFile).toBe(path.normalize(targetLink));
+        expect(first?.resolvedFile).toBe(normalizePath(targetLink));
     });
 });

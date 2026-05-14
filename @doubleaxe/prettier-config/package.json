@@ -19,7 +19,7 @@
   "type": "module",
   "scripts": {
     "lint": "eslint --fix .",
-    "format": "prettier --write .",
+    "format": "prettier --write --ignore-path ../../.prettierignore .",
     "pack": "pnpm pack --pack-destination ../../dist"
   },
   "peerDependencies": {

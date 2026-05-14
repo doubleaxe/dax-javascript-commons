@@ -13,7 +13,7 @@
   },
   "homepage": "https://github.com/doubleaxe/dax-javascript-commons/tree/main/%40doubleaxe/typescript-config",
   "scripts": {
-    "format": "prettier --write .",
+    "format": "prettier --write --ignore-path ../../.prettierignore .",
     "pack": "pnpm pack --pack-destination ../../dist"
   },
   "peerDependencies": {

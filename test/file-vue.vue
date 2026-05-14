@@ -8,7 +8,7 @@ const props = defineProps<{
     name?: string;
     label?: string | boolean;
 }>();
-const aa  =  new Array();
+const aa = new Array();
 </script>
 <script lang="ts">
 export default {
@@ -16,5 +16,5 @@ export default {
 };
 </script>
 <template>
-    <DIV v-bind="props"/>
+    <DIV v-bind="props" />
 </template>

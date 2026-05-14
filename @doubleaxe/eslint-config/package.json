@@ -56,7 +56,7 @@
   },
   "scripts": {
     "lint": "eslint --fix .",
-    "format": "prettier --write .",
+    "format": "prettier --write --ignore-path ../../.prettierignore .",
     "check": "tsc --noEmit",
     "clean": "rimraf ./types ./dist",
     "build": "tsc",

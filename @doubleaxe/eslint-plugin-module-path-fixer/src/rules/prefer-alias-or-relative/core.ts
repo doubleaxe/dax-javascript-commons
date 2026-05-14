@@ -276,7 +276,9 @@ export class PreferAliasOrRelativeCore {
         const relativeCandidates = buildRelativeCandidates(
             input.importerFile,
             resolved.resolvedFile,
-            Boolean(resolved.packageJson?.content.imports && Object.keys(resolved.packageJson.content.imports).length > 0)
+            Boolean(
+                resolved.packageJson?.content.imports && Object.keys(resolved.packageJson.content.imports).length > 0
+            )
         );
 
         for (const relativeSpecifier of relativeCandidates) {

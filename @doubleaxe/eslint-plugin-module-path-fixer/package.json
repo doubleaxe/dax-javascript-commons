@@ -29,7 +29,7 @@
   "types": "./types/index.d.ts",
   "scripts": {
     "lint": "eslint --fix .",
-    "format": "prettier --write .",
+    "format": "prettier --write --ignore-path ../../.prettierignore .",
     "check": "tsc --noEmit",
     "clean": "rimraf ./types ./dist",
     "build": "tsc -p ./tsconfig.build.json",

@@ -2,6 +2,7 @@ import * as path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { normalizePath } from '../src/normalizer.js';
 import { clearAllCaches, createImportResolver } from '../src/resolve.js';
 import { useTempFiles } from './util.js';
 
@@ -26,7 +27,7 @@ describe('resolve.absolute', () => {
         });
         let target = absolute('src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -34,7 +35,7 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports with extensions', () => {
@@ -50,7 +51,7 @@ describe('resolve.absolute', () => {
         });
         let target = absolute('src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -58,7 +59,7 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/components/base/value.js');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports with extension aliases', () => {
@@ -77,7 +78,7 @@ describe('resolve.absolute', () => {
         });
         let target = absolute('src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -85,7 +86,7 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/utils/tool.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('resolves imports for index files', () => {
@@ -101,7 +102,7 @@ describe('resolve.absolute', () => {
         });
         let target = absolute('src/components/base/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -109,7 +110,7 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/components/ext.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -117,7 +118,7 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -125,7 +126,7 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/components/ext/index.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 
     it('should not resolve disabled extensions', () => {
@@ -141,7 +142,7 @@ describe('resolve.absolute', () => {
         });
         let target = absolute('src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -149,7 +150,7 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/utils/tool.mjs');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
         resolved = resolver.resolve({
             importerFile: importer,
@@ -163,6 +164,6 @@ describe('resolve.absolute', () => {
         });
         target = absolute('src/components/base/input.ts');
         expect(resolved).not.toBeNull();
-        expect(resolved?.resolvedFile).toBe(path.normalize(target));
+        expect(resolved?.resolvedFile).toBe(normalizePath(target));
     });
 });
