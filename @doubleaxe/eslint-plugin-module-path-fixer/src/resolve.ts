@@ -29,9 +29,10 @@ export type PackageJsonCacheEntry = {
     path: string;
 };
 
-export type ResolvedImport = {
+export type ResolvedImport = Readonly<{
+    importerDir: string;
     resolvedFile: string;
-};
+}>;
 
 export type ManualTsConfigEntry = {
     baseUrl: string;
@@ -468,12 +469,12 @@ class ImportResolverImpl implements ResolverLike {
 
         let resolvedFile = this.resolveWithTsconfigPaths(importerDir, specifier);
         if (resolvedFile) {
-            return { resolvedFile };
+            return { resolvedFile, importerDir };
         }
 
         resolvedFile = this.resolveWithEnhancedResolver(importerDir, specifier);
         if (resolvedFile) {
-            return { resolvedFile };
+            return { resolvedFile, importerDir };
         }
 
         return null;

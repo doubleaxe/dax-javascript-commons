@@ -13,9 +13,11 @@ import {
 
 type PreferAliasOrRelativeRuleOptions = {
     alias?: readonly ManualTsConfigEntry[];
-    childFolderAliasDepth?: number;
-    folderAlias?: 'always' | 'never';
-    parentFolderAliasDepth?: number;
+    preferAlias?: {
+        maxFolderSegments?: number;
+        maxParentSegments?: number;
+        optimization?: 'none' | 'shorter' | 'shorterEqual';
+    };
 };
 
 type Options = [PreferAliasOrRelativeRuleOptions?];
@@ -26,9 +28,24 @@ const schema: JSONSchema4 = {
     type: 'object',
     additionalProperties: false,
     properties: {
-        folderAlias: { type: 'string', enum: ['always', 'never'] },
-        parentFolderAliasDepth: { type: 'integer' },
-        childFolderAliasDepth: { type: 'integer' },
+        preferAlias: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+                maxFolderSegments: {
+                    type: 'integer',
+                    minimum: -1,
+                },
+                maxParentSegments: {
+                    type: 'integer',
+                    minimum: -1,
+                },
+                optimization: {
+                    type: 'string',
+                    enum: ['none', 'shorter', 'shorterEqual'],
+                },
+            },
+        },
         alias: {
             type: 'array',
             items: {
@@ -73,12 +90,13 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
         const ruleOptions = context.options[0] ?? {};
 
         const core = createPreferAliasOrRelativeCore({
-            preferFolderAlias: (ruleOptions.folderAlias ?? 'always') !== 'never',
-            parentFolderAliasDepth: ruleOptions.parentFolderAliasDepth,
-            childFolderAliasDepth: ruleOptions.childFolderAliasDepth,
+            maxFolderSegments: ruleOptions.preferAlias?.maxFolderSegments,
+            maxParentSegments: ruleOptions.preferAlias?.maxParentSegments,
+            optimization: ruleOptions.preferAlias?.optimization,
             extensionAlias: settings.extensionAlias,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
+            resolveCacheTtl: settings.resolveCacheTtl,
             usePackageJson: settings.usePackageJson,
             useTsConfig: settings.useTsConfig,
         });
@@ -94,7 +112,8 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
                 specifier: currentSpecifier,
             });
 
-            if (!decision || decision.nextSpecifier === currentSpecifier || !literalNode.range) {
+            const { nextSpecifier } = decision;
+            if (!nextSpecifier || nextSpecifier === currentSpecifier || !literalNode.range) {
                 return;
             }
 
@@ -103,13 +122,10 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
                 messageId: 'preferAliasOrRelative',
                 data: {
                     currentSpecifier,
-                    nextSpecifier: decision.nextSpecifier,
+                    nextSpecifier,
                 },
                 fix: (fixer) =>
-                    fixer.replaceTextRange(
-                        literalNode.range,
-                        buildFixedLiteral(decision.nextSpecifier, literalNode.raw)
-                    ),
+                    fixer.replaceTextRange(literalNode.range, buildFixedLiteral(nextSpecifier, literalNode.raw)),
             });
         }
 

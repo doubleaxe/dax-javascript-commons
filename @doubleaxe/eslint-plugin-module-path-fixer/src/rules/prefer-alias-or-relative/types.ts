@@ -1,20 +1,19 @@
 import type { ManualTsConfigEntry, ResolvedImport } from '../../resolve.js';
 
 export type PreferAliasOrRelativeCoreOptions = {
-    childFolderAliasDepth?: number;
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
-    parentFolderAliasDepth?: number;
-    preferFolderAlias?: boolean;
+    maxFolderSegments?: number;
+    maxParentSegments?: number;
+    optimization?: 'none' | 'shorter' | 'shorterEqual';
+    resolveCacheTtl?: number;
     usePackageJson?: boolean;
-    useTsConfig?: boolean;
+    useTsConfig?: boolean | readonly string[] | string;
 };
 
-export type PreferAliasOrRelativeDecisionKind = 'normalize' | 'to-alias' | 'to-relative';
-
 export type PreferAliasOrRelativeDecision = {
-    kind: PreferAliasOrRelativeDecisionKind;
-    nextSpecifier: string;
-    resolved: ResolvedImport;
+    nextSpecifier?: string;
+    reason: 'changed' | 'unchanged' | 'unresolved' | 'unsafe';
+    resolved?: ResolvedImport;
 };
