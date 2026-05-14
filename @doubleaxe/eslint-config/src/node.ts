@@ -16,6 +16,12 @@ const node = defineConfig(pluginSecurity.configs.recommended as EslintConfig, {
         'n/no-unsupported-features/es-syntax': ['error', { ignores: ['modules'] }],
         'n/no-unsupported-features/node-builtins': ['error'],
         'n/prefer-node-protocol': ['error'],
+
+        'security/detect-child-process': ['off'],
+        'security/detect-new-buffer': ['off'],
+        'security/detect-non-literal-fs-filename': ['off'],
+        'security/detect-non-literal-regexp': ['off'],
+        'security/detect-object-injection': ['off'],
     },
     plugins: {
         n: nodePlugin,
