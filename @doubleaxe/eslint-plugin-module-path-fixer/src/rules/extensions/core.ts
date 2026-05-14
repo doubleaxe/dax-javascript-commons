@@ -51,17 +51,15 @@ export class ExtensionsCore {
     private readonly options: NormalizedCoreOptions;
     private readonly resolver: ResolverLike;
 
-    public constructor(options: ExtensionsCoreOptions = {}, resolver?: ResolverLike) {
-        this.resolver =
-            resolver ??
-            createImportResolver({
-                extensions: options.extensions,
-                extensionAlias: options.extensionAlias,
-                resolveCacheTtl: options.resolveCacheTtl,
-                usePackageJson: options.usePackageJson,
-                useTsConfig: options.useTsConfig,
-                manualTsConfigs: options.manualTsConfigs,
-            });
+    public constructor(options: ExtensionsCoreOptions = {}) {
+        this.resolver = createImportResolver({
+            extensions: options.extensions,
+            extensionAlias: options.extensionAlias,
+            resolveCacheTtl: options.resolveCacheTtl,
+            usePackageJson: options.usePackageJson,
+            useTsConfig: options.useTsConfig,
+            manualTsConfigs: options.manualTsConfigs,
+        });
 
         // resolver can normalize extensions
         this.options = {
@@ -134,6 +132,6 @@ export class ExtensionsCore {
     }
 }
 
-export function createExtensionsCore(options: ExtensionsCoreOptions = {}, resolver?: ResolverLike): ExtensionsCore {
-    return new ExtensionsCore(options, resolver);
+export function createExtensionsCore(options: ExtensionsCoreOptions = {}): ExtensionsCore {
+    return new ExtensionsCore(options);
 }
