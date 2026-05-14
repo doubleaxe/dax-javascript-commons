@@ -89,7 +89,7 @@ describe('resolve.tsconfig', () => {
         const nearestA = resolver.getNearestTsJsConfig(path.dirname(importer));
         const tsconfig = path.join(root, 'tsconfig-extends.json');
         expect(nearestA).not.toBeNull();
-        expect(nearestA?.path).toBe(tsconfig);
+        expect(nearestA?.path).toBe(normalizePath(tsconfig));
         expect(nearestA?.alias.some(({ name }) => name === '@app/*')).toBeTruthy();
     });
 
