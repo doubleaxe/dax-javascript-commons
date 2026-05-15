@@ -1,6 +1,2 @@
 export { createPreferAliasOrRelativeCore, PreferAliasOrRelativeCore } from './core.js';
-export type {
-    PreferAliasOrRelativeCoreOptions,
-    PreferAliasOrRelativeDecision,
-    PreferAliasOrRelativeDecisionKind,
-} from './types.js';
+export type { PreferAliasOrRelativeCoreOptions, PreferAliasOrRelativeDecision } from './types.js';

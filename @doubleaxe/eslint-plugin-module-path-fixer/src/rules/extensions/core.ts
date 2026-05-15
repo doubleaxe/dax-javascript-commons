@@ -12,11 +12,8 @@ type NormalizedCoreOptions = {
 };
 
 function addExtension(specifier: string, extension: string): string {
-    if (!extension.startsWith('.')) {
-        return `${specifier}.${extension}`;
-    }
-
-    return `${specifier}${extension}`;
+    const normalizedExtension = extension.startsWith('.') ? extension : `.${extension}`;
+    return `${specifier}${normalizedExtension}`;
 }
 
 const INDEX_SEGMENT = '/index';
@@ -123,10 +120,7 @@ export class ExtensionsCore {
             return normalized;
         }
 
-        const resolvedExtensionWithoutDot = resolvedExtension.startsWith('.')
-            ? resolvedExtension.slice(1)
-            : resolvedExtension;
-        const importExtension = this.options.extensionAlias[resolvedExtensionWithoutDot] ?? resolvedExtensionWithoutDot;
+        const importExtension = this.options.extensionAlias[resolvedExtension] ?? resolvedExtension;
         return addExtension(normalized, importExtension);
     }
 

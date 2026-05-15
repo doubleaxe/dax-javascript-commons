@@ -90,7 +90,7 @@ describe('resolve.tsconfig', () => {
         const tsconfig = path.join(root, 'tsconfig-extends.json');
         expect(nearestA).not.toBeNull();
         expect(nearestA?.path).toBe(normalizePath(tsconfig));
-        expect(nearestA?.alias.some(({ name }) => name === '@app/*')).toBeTruthy();
+        expect(nearestA?.alias.some(({ alias }) => alias === '@app/*')).toBeTruthy();
     });
 
     it('resolves aliases without extensions', () => {
@@ -200,7 +200,7 @@ describe('resolve.tsconfig', () => {
 
         const resolver = createImportResolver({
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let resolved = resolver.resolve({
@@ -353,7 +353,7 @@ describe('resolve.tsconfig', () => {
         const root = gatLocalProjectFromFixture('tsconfig');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { mjs: 'mjjss' } });
+        const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { '.mjs': '.mjjss' } });
         let resolved = resolver.resolve({
             importerFile: importer,
             specifier: '@app/utils/tool',

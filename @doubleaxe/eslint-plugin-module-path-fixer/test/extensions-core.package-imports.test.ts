@@ -22,7 +22,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -89,7 +89,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -125,7 +125,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -192,7 +192,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -228,7 +228,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: true,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -286,7 +286,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: false,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -353,7 +353,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: false,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -366,7 +366,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: true,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -385,7 +385,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -443,7 +443,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -504,7 +504,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -522,7 +522,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: true,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -542,7 +542,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -567,7 +567,7 @@ describe('extensions-core.package-imports', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({

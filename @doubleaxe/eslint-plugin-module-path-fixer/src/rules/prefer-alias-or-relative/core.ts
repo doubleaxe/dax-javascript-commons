@@ -1,377 +1,437 @@
-import * as path from 'node:path';
+import * as path from 'node:path/posix';
 
 import { normalizePath } from '../../normalizer.js';
-import { createImportResolver, type ResolvedImport, type ResolveInput, type ResolverLike } from '../../resolve.js';
-import { buildNextResolveInput } from '../../util.js';
-import { collectAliasCandidatesForResolvedImport } from './alias-candidates.js';
-import type { PreferAliasOrRelativeCoreOptions, PreferAliasOrRelativeDecision } from './types.js';
+import { createImportResolver, type ResolveInput, type ResolverLike } from '../../resolve.js';
+import type {
+    DecisionKind,
+    PreferAliasOrRelativeCoreOptions,
+    PreferAliasOrRelativeDecision,
+    SpecifierReason,
+} from './types.js';
 
 type NormalizedCoreOptions = {
-    childFolderAliasDepth: number;
-    extensionAlias?: Readonly<Record<string, string>>;
-    extensions?: readonly string[];
-    manualTsConfigs?: PreferAliasOrRelativeCoreOptions['manualTsConfigs'];
-    parentFolderAliasDepth: number;
-    preferFolderAlias: boolean;
-    usePackageJson?: boolean;
-    useTsConfig?: boolean;
+    extensionAlias: Readonly<Record<string, string>>;
+    maxChildFolderSegments: number;
+    maxParentSegments: number;
+    optimization: 'none' | 'shorter' | 'shorterEqual';
+    useTotalParentSegments: boolean;
 };
 
-function normalizeParentFolderAliasDepth(depth: number | undefined): number {
-    if (depth === undefined || Number.isNaN(depth) || !Number.isFinite(depth)) {
-        return 0;
-    }
+function createResolvedFile(resolvedFile: string, importerDir: string) {
+    const extension = path.extname(resolvedFile);
+    const basename = path.basename(resolvedFile, extension);
+    const resolvedDir = path.dirname(resolvedFile);
+    const relativeDir = path.relative(importerDir, resolvedDir);
 
-    return Math.trunc(depth);
+    return {
+        resolvedFile,
+        importerDir,
+        basename,
+        extension,
+        resolvedDir,
+        relativeDir,
+        ...getPathDepth(relativeDir),
+    };
 }
 
-function normalizeChildFolderAliasDepth(depth: number | undefined): number {
-    if (depth === undefined || Number.isNaN(depth) || !Number.isFinite(depth)) {
-        return -1;
-    }
+type ResolvedFile = ReturnType<typeof createResolvedFile>;
 
-    return Math.trunc(depth);
-}
-
-function toPosix(value: string): string {
-    return value.split(path.sep).join('/');
-}
-
-function ensureRelativePrefix(specifier: string): string {
-    if (specifier.startsWith('.') || specifier.startsWith('/')) {
-        return specifier;
-    }
-
-    return `./${specifier}`;
-}
-
-function compareByLengthThenLex(a: string, b: string): number {
-    if (a.length !== b.length) {
-        return a.length - b.length;
-    }
-
-    return a.localeCompare(b);
-}
-
-function toPosixPath(value: string): string {
-    return value.split(path.sep).join('/');
-}
-
-function removeExtension(specifier: string): string {
-    const extension = path.extname(specifier);
-    if (!extension) {
-        return specifier;
-    }
-
-    return specifier.slice(0, -extension.length);
-}
-
-function buildSubpathCandidates(baseDir: string, resolvedFile: string): string[] {
-    const relativeToBase = path.relative(baseDir, resolvedFile);
-    if (!relativeToBase || relativeToBase.startsWith('..') || path.isAbsolute(relativeToBase)) {
-        return [];
-    }
-
-    const withExt = toPosixPath(relativeToBase);
-    const withoutExt = removeExtension(withExt);
-    const candidates = [withExt, withoutExt];
-
-    if (withoutExt.endsWith('/index')) {
-        const withoutIndex = withoutExt.slice(0, -'/index'.length);
-        if (withoutIndex.length > 0) {
-            candidates.push(withoutIndex);
-        }
-    }
-
-    return [...new Set(candidates)];
-}
-
-function matchesSubpath(aliasSpecifier: string, subpath: string): boolean {
-    if (aliasSpecifier === subpath) {
-        return true;
-    }
-
-    if (aliasSpecifier.startsWith('#') && aliasSpecifier.slice(1) === subpath) {
-        return true;
-    }
-
-    return aliasSpecifier.endsWith(`/${subpath}`);
-}
-
-function getLeadingParentDepth(specifier: string): number {
-    if (!specifier.startsWith('.')) {
-        return 0;
-    }
-
-    const segments = specifier.split('/');
-    let depth = 0;
+function getPathDepth(fillePath: string) {
+    const segments = fillePath.split('/');
+    let parentSegments = 0;
+    let folderSegments = 0;
 
     for (const segment of segments) {
+        if (segment === '') {
+            continue;
+        }
+
         if (segment === '..') {
-            depth += 1;
-            continue;
-        }
-
-        break;
-    }
-
-    return depth;
-}
-
-function getBackwardFolderSpecifiers(specifier: string): string[] {
-    const segments = specifier.split('/');
-    const candidates: string[] = [];
-
-    for (let end = segments.length - 1; end >= 0; end -= 1) {
-        const folderSegments = segments.slice(0, end);
-        if (folderSegments.length === 0) {
-            candidates.push('.');
-            continue;
-        }
-
-        candidates.push(folderSegments.join('/'));
-    }
-
-    return candidates;
-}
-
-function getParentAnchorSpecifier(depth: number): string {
-    if (depth <= 0) {
-        return '.';
-    }
-
-    return new Array(depth).fill('..').join('/');
-}
-
-function buildRelativeCandidates(importerFile: string, resolvedFile: string, preserveExtension: boolean): string[] {
-    const importerDir = path.dirname(importerFile);
-    const relativeWithExt = ensureRelativePrefix(toPosix(path.relative(importerDir, resolvedFile)));
-    if (!relativeWithExt || relativeWithExt === './') {
-        return [];
-    }
-
-    if (preserveExtension) {
-        return [relativeWithExt];
-    }
-
-    const relativeNoExt = removeExtension(relativeWithExt);
-    const candidates = [relativeNoExt];
-
-    if (relativeNoExt.endsWith('/index')) {
-        const withoutIndex = relativeNoExt.slice(0, -'/index'.length);
-        if (withoutIndex.length > 0) {
-            candidates.push(withoutIndex);
+            parentSegments++;
+        } else {
+            // '.' is also dir
+            folderSegments++;
+            break;
         }
     }
 
-    return [...new Set(candidates)].sort(compareByLengthThenLex);
+    return { parentSegments, folderSegments, totalSegments: parentSegments + folderSegments };
 }
+
+type PathDepth = ReturnType<typeof getPathDepth>;
+
+const SpecifierKind = {
+    IndexFile: 0,
+    IndexDir: 1,
+    IndexDirEndingSlash: 2,
+    File: 3,
+} as const;
+
+function createInputSpecifier(normalizedSpecifier: string, resolvedFile: ResolvedFile) {
+    let extension = path.extname(normalizedSpecifier);
+    let basename = path.basename(normalizedSpecifier, extension);
+    const haveSegments = normalizedSpecifier.includes('/');
+    const isRelative = haveSegments && normalizedSpecifier.startsWith('.');
+
+    let kind: (typeof SpecifierKind)[keyof typeof SpecifierKind] = SpecifierKind.File;
+    if (resolvedFile.basename === 'index') {
+        // TODO - catch /index/index/index case?
+        if (basename === 'index') {
+            kind = SpecifierKind.IndexFile;
+        } else if (basename.endsWith('/')) {
+            kind = SpecifierKind.IndexDirEndingSlash;
+            basename = '';
+            extension = '';
+        } else {
+            kind = SpecifierKind.IndexDir;
+            basename = '';
+            extension = '';
+        }
+    }
+
+    return {
+        path: normalizedSpecifier,
+        basename,
+        extension,
+        filename: basename + extension,
+        kind,
+        haveSegments,
+        isRelative,
+    };
+}
+
+type InputSpecifier = ReturnType<typeof createInputSpecifier>;
+
+function buildResultFilePath(resultDir: string, inputSpecifier: InputSpecifier): string {
+    switch (inputSpecifier.kind) {
+        case SpecifierKind.File:
+        case SpecifierKind.IndexFile:
+            return path.join(resultDir, inputSpecifier.filename);
+        case SpecifierKind.IndexDir:
+            return resultDir;
+        case SpecifierKind.IndexDirEndingSlash:
+            return `${resultDir}/`;
+    }
+    throw new Error('unreachable');
+}
+
+function parseAliasWithStar(pattern: string) {
+    const isMatchAll = pattern === '*';
+    const starIndex = isMatchAll ? -1 : pattern.indexOf('*');
+    let headPart = '';
+    let tailPart = '';
+    if (!isMatchAll && starIndex >= 0) {
+        headPart = pattern.substring(0, starIndex);
+        tailPart = pattern.substring(starIndex + 1);
+    }
+
+    function matchStar(search: string) {
+        if (isMatchAll) return true;
+        if (starIndex < 0) return pattern === search;
+        return search.startsWith(headPart) && search.endsWith(tailPart);
+    }
+
+    function cutStar(search: string) {
+        if (isMatchAll) return search;
+        if (starIndex < 0) return '';
+        return search.substring(starIndex, search.length - tailPart.length);
+    }
+
+    function buildStar(part: string) {
+        if (isMatchAll) return part;
+        if (starIndex < 0) return '';
+        return `${headPart}${part}${tailPart}`;
+    }
+
+    return {
+        pattern,
+        isMatchAll,
+        isHaveStar: isMatchAll || starIndex >= 0,
+        haveTail: !!tailPart,
+        matchStar,
+        cutStar,
+        buildStar,
+    };
+}
+
+type ParsedAlias = ReturnType<typeof parseAliasWithStar>;
+
+type AliasInfo = { alias?: { alias: string } & PathDepth; reason: SpecifierReason };
+type ResultType = {
+    aliasReason?: SpecifierReason;
+    converted?: string;
+    kind: DecisionKind;
+    relativeReason?: SpecifierReason;
+};
 
 export class PreferAliasOrRelativeCore {
     private readonly options: NormalizedCoreOptions;
     private readonly resolver: ResolverLike;
 
-    public constructor(options: PreferAliasOrRelativeCoreOptions = {}, resolver?: ResolverLike) {
-        this.options = {
+    public constructor(options: PreferAliasOrRelativeCoreOptions = {}) {
+        this.resolver = createImportResolver({
             extensions: options.extensions,
-            preferFolderAlias: options.preferFolderAlias ?? true,
-            parentFolderAliasDepth: normalizeParentFolderAliasDepth(options.parentFolderAliasDepth),
-            childFolderAliasDepth: normalizeChildFolderAliasDepth(options.childFolderAliasDepth),
+            extensionAlias: options.extensionAlias,
+            resolveCacheTtl: options.resolveCacheTtl,
             usePackageJson: options.usePackageJson,
             useTsConfig: options.useTsConfig,
             manualTsConfigs: options.manualTsConfigs,
-            extensionAlias: options.extensionAlias,
+        });
+
+        this.options = {
+            maxChildFolderSegments: options.maxChildFolderSegments ?? -1,
+            maxParentSegments: options.maxParentSegments ?? 1,
+            optimization: options.optimization ?? 'shorterEqual',
+            useTotalParentSegments: options.useTotalParentSegments ?? false,
+            extensionAlias: this.resolver.getExtensionAliases(),
         };
-        this.resolver =
-            resolver ??
-            createImportResolver({
-                extensions: options.extensions,
-                extensionAlias: options.extensionAlias,
-                usePackageJson: options.usePackageJson,
-                useTsConfig: options.useTsConfig,
-                manualTsConfigs: options.manualTsConfigs,
-            });
     }
 
-    public evaluate(input: ResolveInput): null | PreferAliasOrRelativeDecision {
+    public evaluate(input: ResolveInput): PreferAliasOrRelativeDecision {
         const specifier = input.specifier;
         const normalizedSpecifier = normalizePath(specifier);
-        const resolved = this.resolver.resolve(input);
+        const resolved = this.resolver.resolve({
+            ...input,
+            specifier: normalizedSpecifier,
+        });
         if (!resolved) {
-            return null;
+            return { kind: 'unresolved' };
         }
 
-        let converted;
-        if (specifier.startsWith('.')) {
-            converted = this.tryConvertRelativeToAlias(input, resolved);
+        const resolvedFile = createResolvedFile(resolved.resolvedFile, resolved.importerDir);
+        const inputSpecifier = createInputSpecifier(normalizedSpecifier, resolvedFile);
+
+        let converted: ResultType;
+        if (this.options.optimization === 'none') {
+            converted = this.tryChooseAliasBasedOnDepth(inputSpecifier, resolvedFile);
         } else {
-            converted = this.tryConvertAliasToRelative(input, resolved);
+            converted = this.tryChooseAliasOptimized(inputSpecifier, resolvedFile);
         }
 
-        if (converted) {
-            return converted;
-        }
-
-        if (normalizedSpecifier !== specifier) {
-            return {
-                kind: 'normalize',
-                nextSpecifier: normalizedSpecifier,
-                resolved,
-            };
-        }
-        return null;
+        return {
+            kind: converted.kind,
+            aliasReason: converted.aliasReason,
+            relativeReason: converted.relativeReason,
+            nextSpecifier: converted.converted,
+            resolved,
+        };
     }
 
-    private tryConvertRelativeToAlias(
-        input: ResolveInput,
-        resolved: ResolvedImport
-    ): null | PreferAliasOrRelativeDecision {
-        const aliases = collectAliasCandidatesForResolvedImport(resolved, {
-            manualTsConfigs: this.options.manualTsConfigs,
-        });
-        const verifiedAliases = aliases
-            .sort(compareByLengthThenLex)
-            .filter((aliasSpecifier) => this.isAliasSpecifierEquivalent(input, resolved, aliasSpecifier));
+    private tryChooseAliasBasedOnDepth(
+        inputSpecifier: InputSpecifier,
+        resolvedFile: ResolvedFile,
+        aliasInfo?: AliasInfo
+    ): ResultType {
+        let useAlias = false;
+        const { maxChildFolderSegments, maxParentSegments, useTotalParentSegments } = this.options;
+        const isParentPath = resolvedFile.parentSegments > 0;
 
-        if (this.options.preferFolderAlias) {
-            const folderAlias = this.findAliasByBackwardFolderWalk(input, resolved, verifiedAliases);
-            if (folderAlias) {
+        if (isParentPath) {
+            if (maxParentSegments < 0) {
+                useAlias = false;
+            } else if (maxParentSegments === 0) {
+                useAlias = true;
+            } else {
+                useAlias =
+                    (useTotalParentSegments ? resolvedFile.totalSegments : resolvedFile.parentSegments) >
+                    maxParentSegments;
+            }
+        } else {
+            if (maxChildFolderSegments < 0) {
+                useAlias = false;
+            } else if (maxChildFolderSegments === 0) {
+                useAlias = true;
+            } else {
+                useAlias = resolvedFile.folderSegments > maxChildFolderSegments;
+            }
+        }
+
+        let _aliasInfo = aliasInfo;
+        if (useAlias) {
+            _aliasInfo ??= this.tryFindAlias(inputSpecifier, resolvedFile);
+            if (_aliasInfo.alias) {
                 return {
-                    kind: 'to-alias',
-                    nextSpecifier: folderAlias,
-                    resolved,
+                    converted: _aliasInfo.alias.alias,
+                    kind: 'alias-depth',
+                    aliasReason: _aliasInfo.reason,
                 };
             }
         }
 
-        if (input.specifier === '.' || input.specifier.startsWith('./')) {
-            return null;
+        return this.buildRelativeResult(inputSpecifier, resolvedFile, _aliasInfo?.reason);
+    }
+
+    private tryChooseAliasOptimized(inputSpecifier: InputSpecifier, resolvedFile: ResolvedFile): ResultType {
+        const aliasInfo = this.tryFindAlias(inputSpecifier, resolvedFile);
+        const { alias, reason: aliasReason } = aliasInfo;
+        if (!alias) {
+            return this.buildRelativeResult(inputSpecifier, resolvedFile, aliasReason);
         }
 
-        const traversalDepth = getLeadingParentDepth(input.specifier);
-        if (this.options.parentFolderAliasDepth < 0) {
-            return null;
+        const _resolvedAlias = alias.alias;
+        // alias segments include file name
+        const aliasSegments = alias.totalSegments - 1;
+        const relativeSegments = resolvedFile.totalSegments;
+
+        if (this.options.optimization === 'shorter') {
+            if (aliasSegments < relativeSegments) {
+                return {
+                    converted: _resolvedAlias,
+                    kind: 'alias-optimized',
+                    aliasReason,
+                };
+            }
+        } else if (this.options.optimization === 'shorterEqual') {
+            if (aliasSegments <= relativeSegments) {
+                return {
+                    converted: _resolvedAlias,
+                    kind: 'alias-optimized',
+                    aliasReason,
+                };
+            }
         }
 
-        if (traversalDepth <= this.options.parentFolderAliasDepth) {
-            return null;
-        }
+        return this.tryChooseAliasBasedOnDepth(inputSpecifier, resolvedFile, aliasInfo);
+    }
 
-        const parentAnchorAlias = this.findAliasNearestToParentFolder(input, resolved, verifiedAliases, traversalDepth);
-        if (parentAnchorAlias) {
+    private buildRelativeResult(
+        inputSpecifier: InputSpecifier,
+        resolvedFile: ResolvedFile,
+        aliasReason?: SpecifierReason
+    ): ResultType {
+        const candidate = buildResultFilePath(resolvedFile.relativeDir, inputSpecifier);
+
+        const candidateValidation = this.resolver.resolve({
+            importerDir: resolvedFile.importerDir,
+            specifier: candidate,
+        });
+        if (candidateValidation?.resolvedFile === resolvedFile.resolvedFile) {
             return {
-                kind: 'to-alias',
-                nextSpecifier: parentAnchorAlias,
-                resolved,
+                kind: 'relative',
+                relativeReason: 'unsafe',
+                aliasReason,
             };
         }
 
-        return null;
+        return {
+            converted: candidate,
+            kind: 'relative',
+            relativeReason: 'found',
+            aliasReason,
+        };
     }
 
-    private tryConvertAliasToRelative(
-        input: ResolveInput,
-        resolved: ResolvedImport
-    ): null | PreferAliasOrRelativeDecision {
-        const relativeCandidates = buildRelativeCandidates(
-            input.importerFile,
-            resolved.resolvedFile,
-            Boolean(
-                resolved.packageJson?.content.imports && Object.keys(resolved.packageJson.content.imports).length > 0
-            )
-        );
+    private tryFindAlias(inputSpecifier: InputSpecifier, resolvedFile: ResolvedFile): AliasInfo {
+        const candidateAliases: string[] = [];
+        const aliasMappings = this.resolver.getAliasMappings(resolvedFile.importerDir);
 
-        for (const relativeSpecifier of relativeCandidates) {
-            const relativeResolved = this.resolver.resolve(buildNextResolveInput(input, relativeSpecifier));
-            if (!relativeResolved) {
-                continue;
-            }
+        for (const aliasMapping of aliasMappings) {
+            const parsedAlias = parseAliasWithStar(aliasMapping.alias);
+            for (const aliasTarget of aliasMapping.targets) {
+                const parsedAbsoluteTarget = parseAliasWithStar(aliasTarget.absolutePattern);
+                const aliasCandidate = this.checkAliasCandidate(
+                    parsedAlias,
+                    parsedAbsoluteTarget,
+                    aliasTarget.originalPattern,
+                    aliasTarget.baseDir,
+                    inputSpecifier,
+                    resolvedFile
+                );
 
-            if (normalizePath(relativeResolved.resolvedFile) !== normalizePath(resolved.resolvedFile)) {
-                continue;
-            }
-
-            return {
-                kind: 'to-relative',
-                nextSpecifier: relativeSpecifier,
-                resolved,
-            };
-        }
-
-        return null;
-    }
-
-    private isAliasSpecifierEquivalent(input: ResolveInput, resolved: ResolvedImport, aliasSpecifier: string): boolean {
-        const aliasResolved = this.resolver.resolve(buildNextResolveInput(input, aliasSpecifier));
-        if (!aliasResolved) {
-            return false;
-        }
-
-        return normalizePath(aliasResolved.resolvedFile) === normalizePath(resolved.resolvedFile);
-    }
-
-    private findAliasByBackwardFolderWalk(
-        input: ResolveInput,
-        resolved: ResolvedImport,
-        aliases: readonly string[]
-    ): null | string {
-        const importerDir = path.dirname(input.importerFile);
-        const folderSpecifiers = getBackwardFolderSpecifiers(input.specifier);
-
-        for (const folderSpecifier of folderSpecifiers) {
-            if (folderSpecifier === '.') {
-                break;
-            }
-
-            const folderAbs = path.resolve(importerDir, folderSpecifier);
-            const subpathCandidates = buildSubpathCandidates(folderAbs, resolved.resolvedFile);
-            if (subpathCandidates.length === 0) {
-                continue;
-            }
-
-            for (const aliasSpecifier of aliases) {
-                if (subpathCandidates.some((subpath) => matchesSubpath(aliasSpecifier, subpath))) {
-                    return aliasSpecifier;
+                if (aliasCandidate) {
+                    candidateAliases.push(aliasCandidate);
                 }
             }
         }
 
-        return null;
+        if (!candidateAliases.length) {
+            return { reason: 'unresolved' };
+        }
+
+        const result = candidateAliases
+            .map((alias) => {
+                return {
+                    alias,
+                    ...getPathDepth(alias),
+                };
+            })
+            .sort((a, b) => {
+                return a.totalSegments - b.totalSegments;
+            });
+
+        const validResult = result.find((candidate) => {
+            const candidateValidation = this.resolver.resolve({
+                importerDir: resolvedFile.importerDir,
+                specifier: candidate.alias,
+            });
+            return candidateValidation?.resolvedFile === resolvedFile.resolvedFile;
+        });
+
+        if (!validResult) {
+            return { reason: 'unsafe' };
+        }
+        return { alias: validResult, reason: 'found' };
     }
 
-    private findAliasNearestToParentFolder(
-        input: ResolveInput,
-        resolved: ResolvedImport,
-        aliases: readonly string[],
-        traversalDepth: number
-    ): null | string {
-        const importerDir = path.dirname(input.importerFile);
-        const parentAnchorSpecifier = getParentAnchorSpecifier(traversalDepth);
-        let currentDir = path.resolve(importerDir, parentAnchorSpecifier);
-
-        while (true) {
-            const subpathCandidates = buildSubpathCandidates(currentDir, resolved.resolvedFile);
-            if (subpathCandidates.length > 0) {
-                for (const aliasSpecifier of aliases) {
-                    if (subpathCandidates.some((subpath) => matchesSubpath(aliasSpecifier, subpath))) {
-                        return aliasSpecifier;
-                    }
-                }
+    private checkAliasCandidate(
+        alias: ParsedAlias,
+        absoluteTarget: ParsedAlias,
+        relativeTarget: string,
+        targetBaseDir: string,
+        inputSpecifier: InputSpecifier,
+        resolvedFile: ResolvedFile
+    ) {
+        let matchedFile = resolvedFile.resolvedFile;
+        if (!absoluteTarget.matchStar(resolvedFile.resolvedFile)) {
+            // try extension alias
+            const extensionAlias = this.options.extensionAlias[resolvedFile.extension];
+            if (!extensionAlias) {
+                return undefined;
             }
-
-            const parentDir = path.dirname(currentDir);
-            if (parentDir === currentDir) {
-                return null;
+            matchedFile = resolvedFile.resolvedDir + resolvedFile.basename + extensionAlias;
+            if (!absoluteTarget.matchStar(matchedFile)) {
+                return undefined;
             }
-
-            currentDir = parentDir;
         }
+
+        // this is alias candidate
+        if (!alias.isHaveStar) {
+            return alias.pattern;
+        }
+
+        const relativePath = path.relative(targetBaseDir, matchedFile);
+        // should handle all extreme cases
+        // '*': ['*', './*', './*.js', './src/*', './src/basename*.js', '../parent/*']
+        // '@/*', '#/*', '@*', '#*', 'header*', '@/*.js'
+        // we also cannot normalize alias, so '@\\*' is different
+        // also '@/src' pointing to index file
+        let normalizedTarget = normalizePath(relativeTarget);
+        if (!normalizedTarget.startsWith('./') || normalizedTarget.startsWith('../')) {
+            normalizedTarget = `./${normalizedTarget}`;
+        }
+        const parsedTarget = parseAliasWithStar(normalizedTarget);
+        if (!parsedTarget.matchStar(relativePath)) {
+            return undefined;
+        }
+
+        let aliasChildNode = parsedTarget.cutStar(relativePath);
+
+        if (alias.haveTail) {
+            return alias.buildStar(aliasChildNode);
+        }
+
+        // if tail is open - we can change it to match original style
+        // alias child is always normalized
+        // will be empty sting for just file name
+        const candidateDir = path.dirname(aliasChildNode);
+        aliasChildNode = buildResultFilePath(candidateDir, inputSpecifier);
+
+        return alias.buildStar(aliasChildNode);
     }
 }
 
 export function createPreferAliasOrRelativeCore(
-    options: PreferAliasOrRelativeCoreOptions = {},
-    resolver?: ResolverLike
+    options: PreferAliasOrRelativeCoreOptions = {}
 ): PreferAliasOrRelativeCore {
-    return new PreferAliasOrRelativeCore(options, resolver);
+    return new PreferAliasOrRelativeCore(options);
 }

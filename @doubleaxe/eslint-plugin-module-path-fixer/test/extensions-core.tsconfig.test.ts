@@ -22,7 +22,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -89,7 +89,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
             useTsConfig: 'tsconfig-files.json',
         });
 
@@ -103,7 +103,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
             useTsConfig: 'tsconfig-files-ext.json',
         });
 
@@ -122,7 +122,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -189,7 +189,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
             useTsConfig: 'tsconfig-files.json',
         });
 
@@ -203,7 +203,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
             useTsConfig: 'tsconfig-files-ext.json',
         });
 
@@ -222,7 +222,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -282,7 +282,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -349,7 +349,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
             useTsConfig: 'tsconfig-files.json',
         });
 
@@ -363,7 +363,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
             useTsConfig: 'tsconfig-files.json',
         });
 
@@ -382,7 +382,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -442,7 +442,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -503,7 +503,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
             useTsConfig: 'tsconfig-files.json',
         });
 
@@ -522,7 +522,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let result = core.evaluate({
@@ -543,7 +543,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: false,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({
@@ -568,7 +568,7 @@ describe('extensions-core.tsconfig', () => {
             preferExtension: true,
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         result = core.evaluate({

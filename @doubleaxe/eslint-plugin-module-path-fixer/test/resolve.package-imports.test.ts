@@ -192,7 +192,7 @@ describe('resolve.package-imports', () => {
 
         resolver = createImportResolver({
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
         resolved = resolver.resolve({
             importerFile: importer,
@@ -209,7 +209,7 @@ describe('resolve.package-imports', () => {
 
         const resolver = createImportResolver({
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let resolved = resolver.resolve({
@@ -285,7 +285,7 @@ describe('resolve.package-imports', () => {
         const root = gatLocalProjectFromFixture('package-imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { mjs: 'mjjss' } });
+        const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { '.mjs': '.mjjss' } });
         let resolved = resolver.resolve({
             importerFile: importer,
             specifier: '#app/utils/tool',

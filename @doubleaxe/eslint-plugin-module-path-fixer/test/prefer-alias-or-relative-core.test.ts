@@ -115,8 +115,6 @@ describe('PreferAliasOrRelativeCore', () => {
 
         const core = createPreferAliasOrRelativeCore({
             extensions: ['.ts'],
-            preferFolderAlias: false,
-            parentFolderAliasDepth: -1,
             manualTsConfigs: [{ baseUrl: root, paths: { '@root/*': ['src/*'] } }],
             useTsConfig: false,
         });
@@ -134,8 +132,6 @@ describe('PreferAliasOrRelativeCore', () => {
 
         const core = createPreferAliasOrRelativeCore({
             extensions: ['.ts'],
-            preferFolderAlias: false,
-            parentFolderAliasDepth: 0,
             manualTsConfigs: [{ baseUrl: root, paths: { '@root/*': ['src/*'] } }],
             useTsConfig: false,
         });

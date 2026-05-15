@@ -11,10 +11,10 @@ import { normalizePath } from './normalizer.js';
 
 const DEFAULT_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'] as const;
 const DEFAULT_EXTENSION_ALIAS = {
-    ts: 'js',
-    tsx: 'jsx',
-    mts: 'mjs',
-    cts: 'cjs',
+    '.ts': '.js',
+    '.tsx': '.jsx',
+    '.mts': '.mjs',
+    '.cts': '.cjs',
 } as const;
 
 export type TsJsConfigCacheEntry = {
@@ -38,7 +38,8 @@ export type ManualTsConfigEntry = {
     baseUrl: string;
     paths: Readonly<Record<string, readonly string[]>>;
 };
-export type AbsolutePathAliasArray = { alias: string[]; name: string }[];
+type AbsolutePathAliasTarget = { absolutePattern: string; baseDir: string; originalPattern: string };
+export type AbsolutePathAliasArray = { alias: string; targets: AbsolutePathAliasTarget[] }[];
 
 export type ResolveInput = {
     // system separator
@@ -131,10 +132,14 @@ function buildAbsoluteAliasOptions(manualTsConfigs: readonly ManualTsConfigEntry
                 : normalizePath(path.join(process.cwd(), manualTsConfig.baseUrl));
 
         for (const [alias, aliasPaths] of Object.entries(manualTsConfig.paths)) {
-            const resolvedTargets = aliasPaths.map((aliasPath) => normalizeResolvedAliasTarget(baseUrl, aliasPath));
+            const resolvedTargets = aliasPaths.map((aliasPath) => ({
+                absolutePattern: normalizeResolvedAliasTarget(baseUrl, aliasPath),
+                originalPattern: aliasPath,
+                baseDir: baseUrl,
+            }));
             aliasOptions.push({
-                name: alias,
-                alias: resolvedTargets,
+                alias,
+                targets: resolvedTargets,
             });
         }
     }
@@ -145,8 +150,12 @@ function buildAbsoluteAliasOptions(manualTsConfigs: readonly ManualTsConfigEntry
 type ReverseExtensionAlias = Record<string, string[]>;
 
 function normalizeExtensionToken(value: string): string {
-    const withoutDot = value.startsWith('.') ? value.slice(1) : value;
-    return withoutDot.trim();
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return '';
+    }
+
+    return trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
 }
 
 function normalizeExtensionAliases(
@@ -172,6 +181,18 @@ function normalizeExtensionAliases(
     }
 
     return normalized;
+}
+
+function normalizeExtensions(extensions: readonly string[] | undefined): readonly string[] {
+    if (!extensions) {
+        return DEFAULT_EXTENSIONS;
+    }
+
+    const normalized = extensions
+        .map((extension) => normalizeExtensionToken(extension))
+        .filter((extension) => extension.length > 0);
+
+    return normalized.length > 0 ? [...new Set(normalized)] : DEFAULT_EXTENSIONS;
 }
 
 function buildReverseExtensionAliases(extensionAlias: Readonly<Record<string, string>>): ReverseExtensionAlias {
@@ -247,7 +268,7 @@ function buildPackageImportAliases(packageJson: PackageJsonCacheEntry): ManualTs
 
 // tsconfig-paths mapping-entry.js
 function sortByLongestPrefix(arr: AbsolutePathAliasArray): AbsolutePathAliasArray {
-    return arr.sort((a, b) => getPrefixLength(b.name) - getPrefixLength(a.name));
+    return arr.sort((a, b) => getPrefixLength(b.alias) - getPrefixLength(a.alias));
 }
 
 function getPrefixLength(pattern: string): number {
@@ -256,22 +277,20 @@ function getPrefixLength(pattern: string): number {
 }
 
 function mergeAliasMappings(entries: AbsolutePathAliasArray): AbsolutePathAliasArray {
-    const merged = new Map<string, string[]>();
+    const merged = new Map<string, AbsolutePathAliasTarget[]>();
 
     for (const entry of entries) {
-        let paths = merged.get(entry.name);
-        if (paths === undefined) {
-            paths = [];
-            merged.set(entry.name, paths);
+        let targets = merged.get(entry.alias);
+        if (targets === undefined) {
+            targets = [];
+            merged.set(entry.alias, targets);
         }
-        for (const alias of entry.alias) {
-            if (!paths.includes(alias)) {
-                paths.push(alias);
-            }
+        for (const target of entry.targets) {
+            targets.push(target);
         }
     }
 
-    return sortByLongestPrefix([...merged.entries()].map(([name, alias]) => ({ name, alias })));
+    return sortByLongestPrefix([...merged.entries()].map(([alias, targets]) => ({ alias, targets })));
 }
 
 function serializeManualTsConfigs(configs: readonly ManualTsConfigEntry[]): string {
@@ -348,7 +367,7 @@ class ImportResolverImpl implements ResolverLike {
         const normalizedOptions: NormaizedResolveImportOptions = {
             errorLog: options.errorLog ?? false,
             extensionAlias: normalizeExtensionAliases(options.extensionAlias),
-            extensions: options.extensions ?? DEFAULT_EXTENSIONS,
+            extensions: normalizeExtensions(options.extensions),
             manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs),
             useTsConfig: options.useTsConfig ?? true,
             usePackageJson: options.usePackageJson ?? true,
@@ -489,8 +508,8 @@ class ImportResolverImpl implements ResolverLike {
         const absolutePathMappings = aliasConfig.map(
             (entry) =>
                 ({
-                    pattern: entry.name,
-                    paths: entry.alias,
+                    pattern: entry.alias,
+                    paths: entry.targets.map((target) => target.absolutePattern),
                 }) as const
         );
         // do not try to read json
@@ -510,15 +529,14 @@ class ImportResolverImpl implements ResolverLike {
         };
         const extensions = [...this.options.extensions];
         const extension = path.extname(specifier);
-        const extensionWithoutDot = extension.startsWith('.') ? extension.slice(1) : extension;
-        const extensionAlias = this.extensionAlias[extensionWithoutDot];
+        const extensionAlias = this.extensionAlias[extension];
         if (extensionAlias) {
             const specifierWithoutExtension = specifier.slice(0, -extension.length);
             if (specifierWithoutExtension) {
                 for (const alias of extensionAlias) {
                     const resolved = matchFromAbsolutePaths(
                         absolutePathMappings,
-                        `${specifierWithoutExtension}.${alias}`,
+                        `${specifierWithoutExtension}${alias}`,
                         readJson,
                         fileExists,
                         extensions

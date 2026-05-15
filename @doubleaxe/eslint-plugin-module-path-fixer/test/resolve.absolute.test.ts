@@ -69,7 +69,7 @@ describe('resolve.absolute', () => {
 
         const resolver = createImportResolver({
             extensions: ['.ts', '.js'],
-            extensionAlias: { ts: 'js' },
+            extensionAlias: { '.ts': '.js' },
         });
 
         let resolved = resolver.resolve({
@@ -134,7 +134,7 @@ describe('resolve.absolute', () => {
         const importer = path.join(root, 'src/feature/importer.ts');
         const absolute = (relativePath: string) => path.join(root, relativePath);
 
-        const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { mjs: 'mjjss' } });
+        const resolver = createImportResolver({ extensions: ['.mjs'], extensionAlias: { '.mjs': '.mjjss' } });
 
         let resolved = resolver.resolve({
             importerFile: importer,

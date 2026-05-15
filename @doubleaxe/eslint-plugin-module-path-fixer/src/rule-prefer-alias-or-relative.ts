@@ -14,9 +14,10 @@ import {
 type PreferAliasOrRelativeRuleOptions = {
     alias?: readonly ManualTsConfigEntry[];
     preferAlias?: {
-        maxFolderSegments?: number;
+        maxChildFolderSegments?: number;
         maxParentSegments?: number;
         optimization?: 'none' | 'shorter' | 'shorterEqual';
+        useTotalParentSegments: boolean;
     };
 };
 
@@ -32,7 +33,7 @@ const schema: JSONSchema4 = {
             type: 'object',
             additionalProperties: false,
             properties: {
-                maxFolderSegments: {
+                maxChildFolderSegments: {
                     type: 'integer',
                     minimum: -1,
                 },
@@ -44,6 +45,7 @@ const schema: JSONSchema4 = {
                     type: 'string',
                     enum: ['none', 'shorter', 'shorterEqual'],
                 },
+                useTotalParentSegments: { type: 'boolean' },
             },
         },
         alias: {
@@ -90,8 +92,9 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
         const ruleOptions = context.options[0] ?? {};
 
         const core = createPreferAliasOrRelativeCore({
-            maxFolderSegments: ruleOptions.preferAlias?.maxFolderSegments,
+            maxChildFolderSegments: ruleOptions.preferAlias?.maxChildFolderSegments,
             maxParentSegments: ruleOptions.preferAlias?.maxParentSegments,
+            useTotalParentSegments: ruleOptions.preferAlias?.useTotalParentSegments,
             optimization: ruleOptions.preferAlias?.optimization,
             extensionAlias: settings.extensionAlias,
             manualTsConfigs: ruleOptions.alias ?? settings.alias,

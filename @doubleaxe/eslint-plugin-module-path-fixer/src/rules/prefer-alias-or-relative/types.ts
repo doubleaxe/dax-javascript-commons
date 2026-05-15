@@ -4,16 +4,21 @@ export type PreferAliasOrRelativeCoreOptions = {
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
-    maxFolderSegments?: number;
+    maxChildFolderSegments?: number;
     maxParentSegments?: number;
     optimization?: 'none' | 'shorter' | 'shorterEqual';
     resolveCacheTtl?: number;
     usePackageJson?: boolean;
+    useTotalParentSegments?: boolean;
     useTsConfig?: boolean | readonly string[] | string;
 };
 
+export type SpecifierReason = 'found' | 'unresolved' | 'unsafe';
+export type DecisionKind = 'alias-depth' | 'alias-optimized' | 'relative' | 'unresolved';
 export type PreferAliasOrRelativeDecision = {
+    aliasReason?: SpecifierReason;
+    kind: DecisionKind;
     nextSpecifier?: string;
-    reason: 'changed' | 'unchanged' | 'unresolved' | 'unsafe';
+    relativeReason?: SpecifierReason;
     resolved?: ResolvedImport;
 };
