@@ -402,13 +402,15 @@ describe('extensions-core.tsconfig', () => {
             importerFile: importer,
             specifier: '@components/base/',
         });
-        expect(result.reason).toBe('unchanged');
+        expect(result.reason).toBe('changed');
+        expect(result.nextSpecifier).toBe('@components/base');
 
         result = core.evaluate({
             importerFile: importer,
             specifier: '@components\\base\\',
         });
-        expect(result.reason).toBe('unchanged');
+        expect(result.reason).toBe('changed');
+        expect(result.nextSpecifier).toBe('@components\\base');
 
         result = core.evaluate({
             importerFile: importer,
@@ -554,7 +556,7 @@ describe('extensions-core.tsconfig', () => {
             importerFile: importer,
             specifier: '@components/ext/',
         });
-        expect(result.reason).toBe('unchanged');
+        expect(result.reason).toBe('unsafe');
 
         result = core.evaluate({
             importerFile: importer,
@@ -580,7 +582,7 @@ describe('extensions-core.tsconfig', () => {
             importerFile: importer,
             specifier: '@components/ext/',
         });
-        expect(result.reason).toBe('unchanged');
+        expect(result.reason).toBe('unsafe');
 
         result = core.evaluate({
             importerFile: importer,

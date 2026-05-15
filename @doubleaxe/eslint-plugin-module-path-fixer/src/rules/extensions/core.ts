@@ -29,6 +29,10 @@ function stripIndexSegment(specifierWithoutExtension: string): string {
         return specifierWithoutExtension.slice(0, -INDEX_SEGMENT2.length);
     }
 
+    if (specifierWithoutExtension.endsWith('/') || specifierWithoutExtension.endsWith('\\')) {
+        // if we don't strip ending slash, and it is normalized out - it could become ambigous
+        return specifierWithoutExtension.slice(0, -1);
+    }
     return specifierWithoutExtension;
 }
 
