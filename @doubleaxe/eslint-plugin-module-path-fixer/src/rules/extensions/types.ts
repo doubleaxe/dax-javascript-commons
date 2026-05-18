@@ -7,7 +7,7 @@ export type ExtensionsCoreOptions = {
     preferDirectoryIndex?: boolean;
     preferExtension?: boolean;
     resolveCacheTtl?: number;
-    usePackageJson?: boolean;
+    usePackageJson?: boolean | readonly string[] | string;
     useTsConfig?: boolean | readonly string[] | string;
 };
 

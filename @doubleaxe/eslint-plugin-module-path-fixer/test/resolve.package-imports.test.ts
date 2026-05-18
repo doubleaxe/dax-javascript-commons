@@ -60,7 +60,7 @@ describe('resolve.package-imports', () => {
         const root = gatLocalProjectFromFixture('package-imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+        let resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
 
         let resolved = resolver.resolve({
             importerFile: importer,
@@ -94,6 +94,11 @@ describe('resolve.package-imports', () => {
         expect(resolved).not.toBeNull();
         expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
+        resolver = createImportResolver({
+            extensions: ['.ts', '.js', '.mjs'],
+            usePackageJson: ['package-base-values.json'],
+        });
+
         resolved = resolver.resolve({
             importerFile: importer,
             specifier: '#base-value',
@@ -107,7 +112,7 @@ describe('resolve.package-imports', () => {
         const root = gatLocalProjectFromFixture('package-imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+        let resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
 
         let resolved = resolver.resolve({
             importerFile: importer,
@@ -141,6 +146,11 @@ describe('resolve.package-imports', () => {
         expect(resolved).not.toBeNull();
         expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
+        resolver = createImportResolver({
+            extensions: ['.ts', '.js', '.mjs'],
+            usePackageJson: ['package-base-values.json'],
+        });
+
         resolved = resolver.resolve({
             importerFile: importer,
             specifier: '#tool',
@@ -154,7 +164,11 @@ describe('resolve.package-imports', () => {
         const root = gatLocalProjectFromFixture('package-imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        let resolver = createImportResolver({ extensions: ['.mjs', '.js'], extensionAlias: {} });
+        let resolver = createImportResolver({
+            extensions: ['.mjs', '.js'],
+            extensionAlias: {},
+            usePackageJson: ['package-base-patterns.json'],
+        });
 
         let resolved = resolver.resolve({
             importerFile: importer,
@@ -193,7 +207,9 @@ describe('resolve.package-imports', () => {
         resolver = createImportResolver({
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-patterns.json'],
         });
+
         resolved = resolver.resolve({
             importerFile: importer,
             specifier: '#base/input.js',
@@ -233,7 +249,10 @@ describe('resolve.package-imports', () => {
         const root = gatLocalProjectFromFixture('package-imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
-        const resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
+        let resolver = createImportResolver({
+            extensions: ['.ts', '.js', '.mjs'],
+            usePackageJson: ['package-base-values.json'],
+        });
 
         let resolved = resolver.resolve({
             importerFile: importer,
@@ -242,6 +261,8 @@ describe('resolve.package-imports', () => {
         let target = path.join(root, 'src/components/base/index.ts');
         expect(resolved).not.toBeNull();
         expect(resolved?.resolvedFile).toBe(normalizePath(target));
+
+        resolver = createImportResolver({ extensions: ['.ts', '.js', '.mjs'] });
 
         resolved = resolver.resolve({
             importerFile: importer,

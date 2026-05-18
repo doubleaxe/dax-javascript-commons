@@ -17,11 +17,19 @@ type NormalizedCoreOptions = {
     useTotalParentSegments: boolean;
 };
 
+function buildRelativePath(from: string, to: string) {
+    let relativePath = path.relative(from, to);
+    if (!relativePath.startsWith('.')) {
+        relativePath = `./${relativePath}`;
+    }
+    return relativePath;
+}
+
 function createResolvedFile(resolvedFile: string, importerDir: string) {
     const extension = path.extname(resolvedFile);
     const basename = path.basename(resolvedFile, extension);
     const resolvedDir = path.dirname(resolvedFile);
-    const relativeDir = path.relative(importerDir, resolvedDir);
+    const relativeDir = buildRelativePath(importerDir, resolvedDir);
 
     return {
         resolvedFile,
@@ -51,7 +59,6 @@ function getPathDepth(fillePath: string) {
         } else {
             // '.' is also dir
             folderSegments++;
-            break;
         }
     }
 
@@ -78,12 +85,11 @@ function createInputSpecifier(normalizedSpecifier: string, resolvedFile: Resolve
         // TODO - catch /index/index/index case?
         if (basename === 'index') {
             kind = SpecifierKind.IndexFile;
-        } else if (basename.endsWith('/')) {
-            kind = SpecifierKind.IndexDirEndingSlash;
-            basename = '';
-            extension = '';
         } else {
             kind = SpecifierKind.IndexDir;
+            if (normalizedSpecifier.endsWith('/')) {
+                kind = SpecifierKind.IndexDirEndingSlash;
+            }
             basename = '';
             extension = '';
         }
@@ -95,7 +101,6 @@ function createInputSpecifier(normalizedSpecifier: string, resolvedFile: Resolve
         extension,
         filename: basename + extension,
         kind,
-        haveSegments,
         isRelative,
     };
 }
@@ -208,11 +213,12 @@ export class PreferAliasOrRelativeCore {
             converted = this.tryChooseAliasOptimized(inputSpecifier, resolvedFile);
         }
 
+        const nextSpecifier = converted.converted === input.specifier ? undefined : converted.converted;
         return {
             kind: converted.kind,
             aliasReason: converted.aliasReason,
             relativeReason: converted.relativeReason,
-            nextSpecifier: converted.converted,
+            nextSpecifier,
             resolved,
         };
     }
@@ -299,13 +305,14 @@ export class PreferAliasOrRelativeCore {
         resolvedFile: ResolvedFile,
         aliasReason?: SpecifierReason
     ): ResultType {
-        const candidate = buildResultFilePath(resolvedFile.relativeDir, inputSpecifier);
+        let candidate = buildResultFilePath(resolvedFile.relativeDir, inputSpecifier);
+        if (!candidate.startsWith('.')) candidate = `./${candidate}`;
 
         const candidateValidation = this.resolver.resolve({
             importerDir: resolvedFile.importerDir,
             specifier: candidate,
         });
-        if (candidateValidation?.resolvedFile === resolvedFile.resolvedFile) {
+        if (candidateValidation?.resolvedFile !== resolvedFile.resolvedFile) {
             return {
                 kind: 'relative',
                 relativeReason: 'unsafe',
@@ -383,14 +390,22 @@ export class PreferAliasOrRelativeCore {
     ) {
         let matchedFile = resolvedFile.resolvedFile;
         if (!absoluteTarget.matchStar(resolvedFile.resolvedFile)) {
-            // try extension alias
-            const extensionAlias = this.options.extensionAlias[resolvedFile.extension];
-            if (!extensionAlias) {
-                return undefined;
-            }
-            matchedFile = resolvedFile.resolvedDir + resolvedFile.basename + extensionAlias;
-            if (!absoluteTarget.matchStar(matchedFile)) {
-                return undefined;
+            if (absoluteTarget.isHaveStar) {
+                // try extension alias
+                const extensionAlias = this.options.extensionAlias[resolvedFile.extension];
+                if (!extensionAlias) {
+                    return undefined;
+                }
+                matchedFile = resolvedFile.resolvedDir + resolvedFile.basename + extensionAlias;
+                if (!absoluteTarget.matchStar(matchedFile)) {
+                    return undefined;
+                }
+            } else {
+                // try direct import file name as is
+                matchedFile = buildResultFilePath(resolvedFile.resolvedDir, inputSpecifier);
+                if (!absoluteTarget.matchStar(matchedFile)) {
+                    return undefined;
+                }
             }
         }
 
@@ -399,14 +414,14 @@ export class PreferAliasOrRelativeCore {
             return alias.pattern;
         }
 
-        const relativePath = path.relative(targetBaseDir, matchedFile);
+        const relativePath = buildRelativePath(targetBaseDir, matchedFile);
         // should handle all extreme cases
         // '*': ['*', './*', './*.js', './src/*', './src/basename*.js', '../parent/*']
         // '@/*', '#/*', '@*', '#*', 'header*', '@/*.js'
         // we also cannot normalize alias, so '@\\*' is different
         // also '@/src' pointing to index file
         let normalizedTarget = normalizePath(relativeTarget);
-        if (!normalizedTarget.startsWith('./') || normalizedTarget.startsWith('../')) {
+        if (!normalizedTarget.startsWith('.')) {
             normalizedTarget = `./${normalizedTarget}`;
         }
         const parsedTarget = parseAliasWithStar(normalizedTarget);
@@ -423,7 +438,8 @@ export class PreferAliasOrRelativeCore {
         // if tail is open - we can change it to match original style
         // alias child is always normalized
         // will be empty sting for just file name
-        const candidateDir = path.dirname(aliasChildNode);
+        let candidateDir = path.dirname(aliasChildNode);
+        if (candidateDir === '.') candidateDir = '';
         aliasChildNode = buildResultFilePath(candidateDir, inputSpecifier);
 
         return alias.buildStar(aliasChildNode);

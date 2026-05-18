@@ -59,11 +59,14 @@ export type ResolveImportOptions = {
     extensions?: readonly string[];
     manualTsConfigs?: readonly ManualTsConfigEntry[];
     resolveCacheTtl?: number;
-    usePackageJson?: boolean;
+    usePackageJson?: boolean | readonly string[] | string;
     useTsConfig?: boolean | readonly string[] | string;
 };
 
-type NormaizedResolveImportOptions = Required<ResolveImportOptions>;
+type NormaizedResolveImportOptions = {
+    packageJsonNames: null | string[];
+    tsconfigNames: null | string[];
+} & Required<Omit<ResolveImportOptions, 'usePackageJson' | 'useTsConfig'>>;
 
 export type PackageJsonContent = {
     [key: string]: unknown;
@@ -195,6 +198,16 @@ function normalizeExtensions(extensions: readonly string[] | undefined): readonl
     return normalized.length > 0 ? [...new Set(normalized)] : DEFAULT_EXTENSIONS;
 }
 
+function normalizeFileNames(option: boolean | readonly string[] | string, defaults: string[]): null | string[] {
+    if (typeof option === 'boolean') {
+        return option ? defaults : null;
+    }
+    if (Array.isArray(option)) {
+        return option.length > 0 ? [...(option as readonly string[])] : null;
+    }
+    return [option as string];
+}
+
 function buildReverseExtensionAliases(extensionAlias: Readonly<Record<string, string>>): ReverseExtensionAlias {
     const reverseAlias: Record<string, string[]> = {};
     const aliasEntries = Object.entries(extensionAlias);
@@ -218,7 +231,13 @@ function buildReverseExtensionAliases(extensionAlias: Readonly<Record<string, st
     return reverseAlias;
 }
 
+const PREFERRED_CONDITIONS = new Set(['browser', 'default', 'import', 'module-sync', 'node', 'require']);
+
 function collectImportTargets(value: unknown): string[] {
+    if (value === null || value === undefined) {
+        return [];
+    }
+
     if (typeof value === 'string') {
         return [value];
     }
@@ -228,9 +247,16 @@ function collectImportTargets(value: unknown): string[] {
     }
 
     if (value && typeof value === 'object') {
-        return [
-            ...new Set(Object.values(value as Record<string, unknown>).flatMap((entry) => collectImportTargets(entry))),
-        ];
+        const conditions = value as Record<string, unknown>;
+
+        const entries = Object.entries(conditions);
+        for (const [key, target] of entries) {
+            if (PREFERRED_CONDITIONS.has(key)) {
+                return collectImportTargets(target);
+            }
+        }
+
+        return collectImportTargets(entries[0]?.[1]);
     }
 
     return [];
@@ -313,12 +339,13 @@ function serializeExtensionAliases(extensionAlias: Readonly<Record<string, strin
 }
 
 function toResolveCacheKey(options: NormaizedResolveImportOptions): string {
+    // do not sort arrays, order matters
     return [
         options.extensions.join(','),
         serializeExtensionAliases(options.extensionAlias),
         String(options.resolveCacheTtl),
-        String(options.useTsConfig),
-        String(options.usePackageJson),
+        options.tsconfigNames?.join(',') ?? '',
+        options.packageJsonNames?.join(',') ?? '',
         serializeManualTsConfigs(options.manualTsConfigs),
     ].join('\u0000');
 }
@@ -369,8 +396,8 @@ class ImportResolverImpl implements ResolverLike {
             extensionAlias: normalizeExtensionAliases(options.extensionAlias),
             extensions: normalizeExtensions(options.extensions),
             manualTsConfigs: normalizeManualTsConfigs(options.manualTsConfigs),
-            useTsConfig: options.useTsConfig ?? true,
-            usePackageJson: options.usePackageJson ?? true,
+            tsconfigNames: normalizeFileNames(options.useTsConfig ?? true, ['tsconfig.json', 'jsconfig.json']),
+            packageJsonNames: normalizeFileNames(options.usePackageJson ?? true, ['package.json']),
             resolveCacheTtl: options.resolveCacheTtl ?? RESOLVE_CACHE_TTL,
         };
         const key = toResolveCacheKey(normalizedOptions);
@@ -419,14 +446,14 @@ class ImportResolverImpl implements ResolverLike {
     private getAliasMappingsInternal(fileDir: string, usePackageJson?: boolean): AbsolutePathAliasArray {
         const mappings: AbsolutePathAliasArray = [...this.absolutePathAlias];
 
-        if (this.options.useTsConfig) {
+        if (this.options.tsconfigNames) {
             const nearestTsConfig = this.getNearestTsJsConfig(fileDir, true);
             if (nearestTsConfig) {
                 mappings.push(...nearestTsConfig.alias);
             }
         }
 
-        if (usePackageJson && this.options.usePackageJson) {
+        if (usePackageJson && this.options.packageJsonNames) {
             const nearestPackageJson = this.getNearestPackageJson(fileDir, true);
             if (nearestPackageJson) {
                 mappings.push(...nearestPackageJson.alias);
@@ -561,7 +588,7 @@ class ImportResolverImpl implements ResolverLike {
                 alias: [],
                 aliasFields: [],
                 conditionNames: [],
-                descriptionFiles: this.options.usePackageJson ? ['package.json'] : [],
+                descriptionFiles: this.options.packageJsonNames ?? [],
                 exportsFields: [],
                 extensionAlias: this.extensionAlias,
                 extensionAliasForExports: false,
@@ -569,7 +596,7 @@ class ImportResolverImpl implements ResolverLike {
                 fallback: [],
                 fileSystem: ImportResolverImpl.fileSystem,
                 fullySpecified: false,
-                importsFields: this.options.usePackageJson ? ['imports'] : [],
+                importsFields: this.options.packageJsonNames ? ['imports'] : [],
                 mainFields: [],
                 mainFiles: ['index'],
                 modules: [],
@@ -595,18 +622,11 @@ class ImportResolverImpl implements ResolverLike {
     }
 
     private findNearestTsJsConfig(startDir: string): null | TsJsConfigCacheEntry {
-        const arrayFromString = (s: readonly string[] | string) => {
-            return Array.isArray(s) ? (s as readonly string[]) : ([s] as readonly string[]);
-        };
-        const tsconfigName =
-            typeof this.options.useTsConfig === 'boolean'
-                ? ['tsconfig.json', 'jsconfig.json']
-                : arrayFromString(this.options.useTsConfig);
-
+        if (!this.options.tsconfigNames) return null;
         const foundObject = ImportResolverImpl.findNearestFile(
             startDir,
             this.tsconfigCache,
-            tsconfigName,
+            this.options.tsconfigNames,
             (foundPath) => {
                 const loaded = loadConfig(foundPath);
 
@@ -635,10 +655,11 @@ class ImportResolverImpl implements ResolverLike {
     }
 
     private findNearestPackageJson(startDir: string): null | PackageJsonCacheEntry {
+        if (!this.options.packageJsonNames) return null;
         const foundObject = ImportResolverImpl.findNearestFile(
             startDir,
             this.packageJsonCache,
-            ['package.json'],
+            this.options.packageJsonNames,
             (foundPath) => {
                 const raw = fs.readFileSync(foundPath, 'utf8');
                 const content = JSON.parse(raw) as PackageJsonContent;

@@ -8,7 +8,7 @@ export type PreferAliasOrRelativeCoreOptions = {
     maxParentSegments?: number;
     optimization?: 'none' | 'shorter' | 'shorterEqual';
     resolveCacheTtl?: number;
-    usePackageJson?: boolean;
+    usePackageJson?: boolean | readonly string[] | string;
     useTotalParentSegments?: boolean;
     useTsConfig?: boolean | readonly string[] | string;
 };

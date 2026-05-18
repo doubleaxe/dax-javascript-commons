@@ -3,14 +3,6 @@
   "type": "module",
   "imports": {
     "#app/*": "./src/*",
-    "#components/*": "./src/components/*",
-    "#base-any/*": "./src/components/base/*.js",
-    "#base/*.js": "./src/components/base/*.js",
-    "#tool": {
-      "dummy": "./src/utils/tool.js",
-      "default": "./src/utils/tool.mjs"
-    },
-    "#base": "./src/components/base",
-    "#base-value": "./src/components/base/value"
+    "#components/*": "./src/components/*"
   }
 }

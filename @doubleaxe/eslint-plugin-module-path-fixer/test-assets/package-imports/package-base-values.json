@@ -1,0 +1,11 @@
+{
+  "name": "package-imports-proj",
+  "imports": {
+    "#tool": {
+      "dummy": "./src/utils/tool.js",
+      "default": "./src/utils/tool.mjs"
+    },
+    "#base": "./src/components/base",
+    "#base-value": "./src/components/base/value"
+  }
+}

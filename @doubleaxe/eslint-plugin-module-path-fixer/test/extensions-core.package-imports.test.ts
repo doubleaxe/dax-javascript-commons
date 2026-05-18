@@ -90,6 +90,7 @@ describe('extensions-core.package-imports', () => {
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-values.json'],
         });
 
         result = core.evaluate({
@@ -103,6 +104,14 @@ describe('extensions-core.package-imports', () => {
             specifier: '#tool',
         });
         expect(result.reason).toBe('unsafe');
+
+        core = createExtensionsCore({
+            preferExtension: true,
+            preferDirectoryIndex: false,
+            extensions: ['.ts', '.js'],
+            extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-patterns.json'],
+        });
 
         result = core.evaluate({
             importerFile: importer,
@@ -193,6 +202,7 @@ describe('extensions-core.package-imports', () => {
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-values.json'],
         });
 
         result = core.evaluate({
@@ -206,6 +216,14 @@ describe('extensions-core.package-imports', () => {
             specifier: '#tool',
         });
         expect(result.reason).toBe('unchanged');
+
+        core = createExtensionsCore({
+            preferExtension: false,
+            preferDirectoryIndex: false,
+            extensions: ['.ts', '.js'],
+            extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-patterns.json'],
+        });
 
         result = core.evaluate({
             importerFile: importer,
@@ -354,6 +372,7 @@ describe('extensions-core.package-imports', () => {
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-values.json'],
         });
 
         result = core.evaluate({
@@ -367,6 +386,7 @@ describe('extensions-core.package-imports', () => {
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-values.json'],
         });
 
         result = core.evaluate({
@@ -505,6 +525,7 @@ describe('extensions-core.package-imports', () => {
             preferDirectoryIndex: false,
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
+            usePackageJson: ['package-base-values.json'],
         });
 
         result = core.evaluate({

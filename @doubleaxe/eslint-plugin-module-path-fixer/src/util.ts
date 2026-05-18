@@ -7,7 +7,7 @@ export type ModulePathFixerSettings = {
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     resolveCacheTtl?: number;
-    usePackageJson?: boolean;
+    usePackageJson?: boolean | readonly string[] | string;
     useTsConfig?: boolean | readonly string[] | string;
 };
 
@@ -38,7 +38,12 @@ export function parseModulePathFixerSettings(settingsInput: unknown): ModulePath
         ? (namespace['extensions'] as readonly string[])
         : undefined;
     const resolveCacheTtl = typeof namespace['resolveCacheTtl'] === 'number' ? namespace['resolveCacheTtl'] : undefined;
-    const usePackageJson = typeof namespace['usePackageJson'] === 'boolean' ? namespace['usePackageJson'] : undefined;
+    const usePackageJson =
+        typeof namespace['usePackageJson'] === 'boolean' ||
+        typeof namespace['usePackageJson'] === 'string' ||
+        Array.isArray(namespace['usePackageJson'])
+            ? namespace['usePackageJson']
+            : undefined;
     const useTsConfig =
         typeof namespace['useTsConfig'] === 'boolean' ||
         typeof namespace['useTsConfig'] === 'string' ||
