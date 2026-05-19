@@ -372,7 +372,7 @@ describe('extensions-core.package-imports', () => {
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
-            usePackageJson: ['package-base-values.json'],
+            usePackageJson: ['package-base-index.json'],
         });
 
         result = core.evaluate({
@@ -386,7 +386,7 @@ describe('extensions-core.package-imports', () => {
             preferDirectoryIndex: true,
             extensions: ['.ts', '.js'],
             extensionAlias: { '.ts': '.js' },
-            usePackageJson: ['package-base-values.json'],
+            usePackageJson: ['package-base-index.json'],
         });
 
         result = core.evaluate({

@@ -1,7 +1,7 @@
 {
   "name": "package-imports-proj",
   "imports": {
-    "#base-any/*": "./src/components/base/*.mjs",
+    "#base": "./src/components/base",
     "#base/*.js": "./src/components/base/*.js"
   }
 }

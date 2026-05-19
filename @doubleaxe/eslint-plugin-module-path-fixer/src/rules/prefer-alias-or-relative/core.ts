@@ -389,24 +389,27 @@ export class PreferAliasOrRelativeCore {
         resolvedFile: ResolvedFile
     ) {
         let matchedFile = resolvedFile.resolvedFile;
-        if (!absoluteTarget.matchStar(resolvedFile.resolvedFile)) {
-            if (absoluteTarget.isHaveStar) {
-                // try extension alias
-                const extensionAlias = this.options.extensionAlias[resolvedFile.extension];
-                if (!extensionAlias) {
-                    return undefined;
-                }
+        let foundMatch = absoluteTarget.matchStar(matchedFile);
+        if (!foundMatch) {
+            // try extension alias
+            const extensionAlias = this.options.extensionAlias[resolvedFile.extension];
+            if (extensionAlias) {
                 matchedFile = resolvedFile.resolvedDir + resolvedFile.basename + extensionAlias;
-                if (!absoluteTarget.matchStar(matchedFile)) {
-                    return undefined;
-                }
-            } else {
-                // try direct import file name as is
-                matchedFile = buildResultFilePath(resolvedFile.resolvedDir, inputSpecifier);
-                if (!absoluteTarget.matchStar(matchedFile)) {
-                    return undefined;
-                }
+                foundMatch = absoluteTarget.matchStar(matchedFile);
             }
+        }
+        if (!foundMatch) {
+            // try extensionless
+            matchedFile = resolvedFile.resolvedDir + resolvedFile.basename;
+            foundMatch = absoluteTarget.matchStar(matchedFile);
+        }
+        if (!foundMatch) {
+            // try direct import file name as is
+            matchedFile = buildResultFilePath(resolvedFile.resolvedDir, inputSpecifier);
+            foundMatch = absoluteTarget.matchStar(matchedFile);
+        }
+        if (!foundMatch) {
+            return undefined;
         }
 
         // this is alias candidate
@@ -431,7 +434,7 @@ export class PreferAliasOrRelativeCore {
 
         let aliasChildNode = parsedTarget.cutStar(relativePath);
 
-        if (alias.haveTail) {
+        if (alias.haveTail || parsedTarget.haveTail) {
             return alias.buildStar(aliasChildNode);
         }
 

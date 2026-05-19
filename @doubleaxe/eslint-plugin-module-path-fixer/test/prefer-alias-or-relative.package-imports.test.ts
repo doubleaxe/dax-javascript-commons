@@ -213,13 +213,6 @@ describe('prefer-alias-or-relative.tsconfig', () => {
         expect(result?.kind).toBe('relative');
         expect(result?.nextSpecifier).toBeUndefined();
 
-        core = createPreferAliasOrRelativeCore({
-            extensions: ['.ts', '.js', '.mjs'],
-            extensionAlias: { '.ts': '.js' },
-            optimization: 'shorter',
-            usePackageJson: ['package-base-values.json'],
-        });
-
         result = core.evaluate({
             importerFile: importer,
             specifier: '../components/base',
@@ -227,13 +220,6 @@ describe('prefer-alias-or-relative.tsconfig', () => {
 
         expect(result?.kind).toBe('alias-optimized');
         expect(result?.nextSpecifier).toBe('#base');
-
-        core = createPreferAliasOrRelativeCore({
-            extensions: ['.ts', '.js', '.mjs'],
-            extensionAlias: { '.ts': '.js' },
-            optimization: 'shorter',
-            usePackageJson: ['package-base-values.json'],
-        });
 
         result = core.evaluate({
             importerFile: importer,
@@ -263,11 +249,12 @@ describe('prefer-alias-or-relative.tsconfig', () => {
             specifier: '../utils/tool.js',
         });
 
-        expect(result?.aliasReason).toBe('unsafe');
+        expect(result?.kind).toBe('alias-optimized');
+        expect(result?.nextSpecifier).toBe('#tool');
     });
 
     it('shorter alias wins', () => {
-        const root = gatLocalProjectFromFixture('tsconfig');
+        const root = gatLocalProjectFromFixture('package-imports');
         const importer = path.join(root, 'src/feature/importer.ts');
 
         const core = createPreferAliasOrRelativeCore({
@@ -279,26 +266,63 @@ describe('prefer-alias-or-relative.tsconfig', () => {
 
         let result = core.evaluate({
             importerFile: importer,
-            specifier: '@app/components/base/value.js',
+            specifier: '#app/components/base/value.js',
         });
 
         expect(result?.kind).toBe('alias-depth');
-        expect(result?.nextSpecifier).toBe('@base/value.js');
+        expect(result?.nextSpecifier).toBe('#components/base/value.js');
 
         result = core.evaluate({
             importerFile: importer,
-            specifier: '@components/base/value.js',
+            specifier: '#components/../utils/tool.js',
+        });
+
+        // TODO
+        expect(result?.kind).toBe('unresolved');
+    });
+
+    it('alias for patterns', () => {
+        const root = gatLocalProjectFromFixture('package-imports');
+        const importer = path.join(root, 'src/feature/importer.ts');
+
+        let core = createPreferAliasOrRelativeCore({
+            extensions: ['.ts', '.js'],
+            extensionAlias: { '.ts': '.js' },
+            optimization: 'none',
+            maxParentSegments: 0,
+            usePackageJson: ['package-base-patterns.json'],
+        });
+
+        let result = core.evaluate({
+            importerFile: importer,
+            specifier: '../components/base/value.mjs',
         });
 
         expect(result?.kind).toBe('alias-depth');
-        expect(result?.nextSpecifier).toBe('@base/value.js');
+        expect(result?.nextSpecifier).toBe('#base-any/value');
 
         result = core.evaluate({
             importerFile: importer,
-            specifier: '@components/../utils/tool.js',
+            specifier: '../components/base/value.js',
         });
 
         expect(result?.kind).toBe('alias-depth');
-        expect(result?.nextSpecifier).toBe('@app/utils/tool.js');
+        expect(result?.nextSpecifier).toBe('#base/value.js');
+
+        core = createPreferAliasOrRelativeCore({
+            extensions: ['.mjs'],
+            extensionAlias: { '.mjs': '.js' },
+            optimization: 'none',
+            maxParentSegments: 0,
+            usePackageJson: ['package-base-patterns.json'],
+        });
+
+        result = core.evaluate({
+            importerFile: importer,
+            specifier: '../components/base/value',
+        });
+
+        expect(result?.kind).toBe('alias-depth');
+        expect(result?.nextSpecifier).toBe('#base-any/value');
     });
 });

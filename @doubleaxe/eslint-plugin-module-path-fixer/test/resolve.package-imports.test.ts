@@ -174,7 +174,7 @@ describe('resolve.package-imports', () => {
             importerFile: importer,
             specifier: '#base-any/value',
         });
-        let target = path.join(root, 'src/components/base/value.js');
+        let target = path.join(root, 'src/components/base/value.mjs');
         expect(resolved).not.toBeNull();
         expect(resolved?.resolvedFile).toBe(normalizePath(target));
 
