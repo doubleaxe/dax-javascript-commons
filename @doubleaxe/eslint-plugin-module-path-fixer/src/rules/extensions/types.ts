@@ -1,9 +1,9 @@
-import type { ManualTsConfigEntry } from '../../resolve.js';
+import type { AliasEntry } from '../../alias/types.js';
 
 export type ExtensionsCoreOptions = {
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
-    manualTsConfigs?: readonly ManualTsConfigEntry[];
+    manualAliases?: readonly AliasEntry[];
     preferDirectoryIndex?: boolean;
     preferExtension?: boolean;
     resolveCacheTtl?: number;

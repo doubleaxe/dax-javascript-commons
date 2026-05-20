@@ -1,7 +1,7 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type { JSONSchema4 } from '@typescript-eslint/utils/json-schema';
 
-import type { ManualTsConfigEntry } from './resolve.js';
+import type { AliasEntry } from './alias/types.js';
 import { createExtensionsCore } from './rules/extensions/index.js';
 import {
     buildFixedLiteral,
@@ -12,7 +12,7 @@ import {
 } from './util.js';
 
 type ExtensionsRuleOptions = {
-    alias?: readonly ManualTsConfigEntry[];
+    alias?: readonly AliasEntry[];
     extension?: 'always' | 'never';
     index?: 'always' | 'never';
 };
@@ -80,7 +80,7 @@ export const extensionsRule: TSESLint.RuleModule<MessageIds, Options> = {
             preferExtension: ruleOptions.extension === 'always',
             preferDirectoryIndex: ruleOptions.index === 'always',
             extensionAlias: settings.extensionAlias,
-            manualTsConfigs: ruleOptions.alias ?? settings.alias,
+            manualAliases: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
             resolveCacheTtl: settings.resolveCacheTtl,
             usePackageJson: settings.usePackageJson,

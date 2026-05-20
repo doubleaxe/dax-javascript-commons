@@ -1,7 +1,7 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type { JSONSchema4 } from '@typescript-eslint/utils/json-schema';
 
-import type { ManualTsConfigEntry } from './resolve.js';
+import type { AliasEntry } from './alias/types.js';
 import { createPreferAliasOrRelativeCore } from './rules/prefer-alias-or-relative/index.js';
 import {
     buildFixedLiteral,
@@ -12,7 +12,7 @@ import {
 } from './util.js';
 
 type PreferAliasOrRelativeRuleOptions = {
-    alias?: readonly ManualTsConfigEntry[];
+    alias?: readonly AliasEntry[];
     preferAlias?: {
         maxChildFolderSegments?: number;
         maxParentSegments?: number;
@@ -97,7 +97,7 @@ export const preferAliasOrRelativeRule: TSESLint.RuleModule<MessageIds, Options>
             useTotalParentSegments: ruleOptions.preferAlias?.useTotalParentSegments,
             optimization: ruleOptions.preferAlias?.optimization,
             extensionAlias: settings.extensionAlias,
-            manualTsConfigs: ruleOptions.alias ?? settings.alias,
+            manualAliases: ruleOptions.alias ?? settings.alias,
             extensions: settings.extensions,
             resolveCacheTtl: settings.resolveCacheTtl,
             usePackageJson: settings.usePackageJson,

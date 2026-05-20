@@ -1,9 +1,10 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import type { ManualTsConfigEntry, ResolveInput } from './resolve.js';
+import type { AliasEntry } from './alias/types.js';
+import type { ResolveInput } from './resolve.js';
 
 export type ModulePathFixerSettings = {
-    alias?: readonly ManualTsConfigEntry[];
+    alias?: readonly AliasEntry[];
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     resolveCacheTtl?: number;
@@ -22,9 +23,7 @@ export function parseModulePathFixerSettings(settingsInput: unknown): ModulePath
         return {};
     }
 
-    const alias = Array.isArray(namespace['alias'])
-        ? (namespace['alias'] as readonly ManualTsConfigEntry[])
-        : undefined;
+    const alias = Array.isArray(namespace['alias']) ? (namespace['alias'] as readonly AliasEntry[]) : undefined;
     const extensionAliasRecord = asRecord(namespace['extensionAlias']);
     const extensionAlias = extensionAliasRecord
         ? (Object.fromEntries(
@@ -133,4 +132,8 @@ export function buildNextResolveInput(input: ResolveInput, specifier: string): R
         importerFile: input.importerFile,
         specifier,
     };
+}
+
+export function stripBom(text: string): string {
+    return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 }

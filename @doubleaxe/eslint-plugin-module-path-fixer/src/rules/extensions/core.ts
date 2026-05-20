@@ -59,7 +59,7 @@ export class ExtensionsCore {
             resolveCacheTtl: options.resolveCacheTtl,
             usePackageJson: options.usePackageJson,
             useTsConfig: options.useTsConfig,
-            manualTsConfigs: options.manualTsConfigs,
+            manualAliases: options.manualAliases,
         });
 
         // resolver can normalize extensions
