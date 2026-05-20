@@ -35,13 +35,13 @@ function collectImportTargets(value: unknown): string[] {
     return [];
 }
 
-export function buildPackageImportAliases(fileSystem: FileSystem, fileName: string): AliasEntry | null {
+export function buildPackageImportAliases(fileSystem: FileSystem, fileName: string): AliasEntry | undefined {
     const raw = fileSystem.readFileSync(fileName, 'utf8');
     const packageJson = JSON.parse(stripBom(raw)) as PackageJsonContent;
 
     const imports = packageJson.imports;
     if (!imports || typeof imports !== 'object') {
-        return null;
+        return undefined;
     }
 
     const paths: Record<string, string[]> = {};
@@ -58,7 +58,7 @@ export function buildPackageImportAliases(fileSystem: FileSystem, fileName: stri
     }
 
     if (Object.keys(paths).length === 0) {
-        return null;
+        return undefined;
     }
 
     return {

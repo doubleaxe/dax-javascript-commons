@@ -111,13 +111,13 @@ export function isRequireCall(node: TSESTree.CallExpression, sourceCode: Readonl
     return isGlobalRequireIdentifier(sourceCode, node.callee);
 }
 
-export function getImportEqualsLiteral(node: TSESTree.TSImportEqualsDeclaration): null | TSESTree.Literal {
+export function getImportEqualsLiteral(node: TSESTree.TSImportEqualsDeclaration): TSESTree.Literal | undefined {
     const moduleReference = node.moduleReference;
     if (moduleReference.type !== AST_NODE_TYPES.TSExternalModuleReference) {
-        return null;
+        return undefined;
     }
 
-    return isStringLiteral(moduleReference.expression) ? moduleReference.expression : null;
+    return isStringLiteral(moduleReference.expression) ? moduleReference.expression : undefined;
 }
 
 export function buildResolveInput(importerFile: string, specifier: string): ResolveInput {

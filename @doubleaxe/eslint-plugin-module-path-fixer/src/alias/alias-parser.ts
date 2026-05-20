@@ -6,7 +6,8 @@ import { fileExists, type FileSystem } from '../fscache.js';
 import { normalizePath } from '../normalizer.js';
 import { buildPackageImportAliases } from './package-imports.js';
 import { buildTsconfigAliases } from './tsconfig.js';
-import type { AbsolutePathAliasArray, AliasCacheEntry, AliasEntry } from './types.js';
+import type { AbsolutePathAliasArray, AbsolutePathAliasTarget, AliasCacheEntry, AliasEntry } from './types.js';
+import { parseAliasWithStar, type ParsedAlias } from './utils.js';
 
 function findNearestFile<T>(
     fileSystem: FileSystem,
@@ -91,10 +92,14 @@ function normalizeResolvedAliasTarget(baseUrl: string, target: string): string {
     return normalizePath(isAbsolute ? target : path.join(baseUrl, target));
 }
 
-export function buildAbsoluteAliasOptions(aliasEntries: readonly AliasEntry[]): AbsolutePathAliasArray {
+export function buildAbsoluteAliasOptions(
+    aliasEntries: readonly AliasEntry[],
+    tsconfigWorkaround?: boolean
+): AbsolutePathAliasArray {
     const aliasOptions: AbsolutePathAliasArray = [];
 
     for (const aliasEntry of aliasEntries) {
+        const applyTsconfigWorkaround = tsconfigWorkaround && aliasEntry.source === 'tsconfig';
         const normalizedBaseUrl = normalizePath(aliasEntry.baseUrl);
         const baseUrl =
             path.posix.isAbsolute(normalizedBaseUrl) || path.win32.isAbsolute(normalizedBaseUrl)
@@ -102,37 +107,104 @@ export function buildAbsoluteAliasOptions(aliasEntries: readonly AliasEntry[]): 
                 : normalizePath(path.join(process.cwd(), aliasEntry.baseUrl));
 
         for (const [alias, aliasPaths] of Object.entries(aliasEntry.paths)) {
-            const resolvedTargets = aliasPaths.map((aliasPath) => ({
-                absolutePattern: normalizeResolvedAliasTarget(baseUrl, aliasPath),
-                originalPattern: aliasPath,
-                baseDir: baseUrl,
-            }));
-            aliasOptions.push({
-                alias,
-                targets: resolvedTargets,
-            });
+            const parsedAlias = parseAliasWithStar(alias);
+
+            if (applyTsconfigWorkaround && parsedAlias.haveTail) {
+                // tsconfig-paths doesn't support aliases with tail
+                // probably webpack too
+                // real tsc supports aliases with tail
+                continue;
+            }
+
+            const resolvedTargets: AbsolutePathAliasTarget[] = [];
+            for (const aliasPath of aliasPaths) {
+                const parsedOriginalPattern = parseAliasWithStar(aliasPath);
+                if (applyTsconfigWorkaround && parsedOriginalPattern.haveTail) {
+                    continue;
+                }
+                const absolutePattern = normalizeResolvedAliasTarget(baseUrl, aliasPath);
+                resolvedTargets.push({
+                    absolutePattern,
+                    originalPattern: aliasPath,
+                    parsedAbsolutePattern: parseAliasWithStar(absolutePattern),
+                    parsedOriginalPattern,
+                    baseDir: baseUrl,
+                });
+            }
+
+            if (resolvedTargets.length) {
+                aliasOptions.push({
+                    alias,
+                    parsedAlias,
+                    targets: resolvedTargets,
+                });
+            }
         }
     }
 
     return aliasOptions;
 }
 
+// tsconfig-paths mapping-entry.js
+function sortByLongestPrefix(arr: AbsolutePathAliasArray): AbsolutePathAliasArray {
+    return arr.sort((a, b) => getPrefixLength(b.alias) - getPrefixLength(a.alias));
+}
+
+function getPrefixLength(pattern: string): number {
+    const prefixLength = pattern.indexOf('*');
+    return pattern.substring(0, prefixLength).length;
+}
+
+function mergeAliasMappings(entries: AbsolutePathAliasArray): AbsolutePathAliasArray {
+    const merged = new Map<string, { parsedAlias: ParsedAlias; targets: AbsolutePathAliasTarget[] }>();
+
+    for (const entry of entries) {
+        let targets = merged.get(entry.alias);
+        if (targets === undefined) {
+            targets = { parsedAlias: entry.parsedAlias, targets: [] };
+            merged.set(entry.alias, targets);
+        }
+        for (const target of entry.targets) {
+            targets.targets.push(target);
+        }
+    }
+
+    return sortByLongestPrefix(
+        [...merged.entries()].map(([alias, targets]) => ({
+            alias,
+            parsedAlias: targets.parsedAlias,
+            targets: targets.targets,
+        }))
+    );
+}
+
 type CreateAliasOptions = {
+    absoluteManualAlias?: AbsolutePathAliasArray;
     errorLog?: boolean;
     fileSystem: FileSystem;
-    packageJsonNames: null | string[];
-    tsconfigNames: null | string[];
+    packageJsonNames: string[] | undefined;
+    tsconfigNames: string[] | undefined;
 };
 
 const CONFIG_CACHE_TTL = 30_000;
 
-export function createAliasParser({ fileSystem, packageJsonNames, tsconfigNames, errorLog }: CreateAliasOptions) {
+export function createAliasParser({
+    fileSystem,
+    packageJsonNames,
+    tsconfigNames,
+    errorLog,
+    absoluteManualAlias,
+}: CreateAliasOptions) {
     // cannot be static, because uses options
     const tsconfigCache = new LRUCache<string, { value: AliasCacheEntry | null }>({
         max: 100,
         ttl: CONFIG_CACHE_TTL,
     });
     const packageJsonCache = new LRUCache<string, { value: AliasCacheEntry | null }>({
+        max: 100,
+        ttl: CONFIG_CACHE_TTL,
+    });
+    const aliasMappingsCache = new LRUCache<string, AbsolutePathAliasArray>({
         max: 100,
         ttl: CONFIG_CACHE_TTL,
     });
@@ -214,8 +286,45 @@ export function createAliasParser({ fileSystem, packageJsonNames, tsconfigNames,
         return nearest;
     }
 
+    function getAliasMappings(fileDir: string) {
+        let mappings = aliasMappingsCache.get(fileDir);
+
+        if (mappings !== undefined) {
+            return mappings;
+        }
+
+        mappings = [...(absoluteManualAlias ?? [])];
+
+        if (tsconfigNames) {
+            const nearestTsConfig = getNearestTsJsConfig(fileDir, true);
+            if (nearestTsConfig) {
+                mappings.push(...nearestTsConfig.alias);
+            }
+        }
+
+        if (packageJsonNames) {
+            const nearestPackageJson = getNearestPackageJson(fileDir, true);
+            if (nearestPackageJson) {
+                mappings.push(...nearestPackageJson.alias);
+            }
+        }
+
+        mappings = mergeAliasMappings(mappings);
+        aliasMappingsCache.set(fileDir, mappings);
+
+        return mappings;
+    }
+
+    function clearCaches() {
+        tsconfigCache.clear();
+        packageJsonCache.clear();
+        aliasMappingsCache.clear();
+    }
+
     return {
         getNearestTsJsConfig,
         getNearestPackageJson,
+        getAliasMappings,
+        clearCaches,
     };
 }

@@ -1,3 +1,5 @@
+import type { ParsedAlias } from './utils.js';
+
 export type AliasEntry = {
     baseUrl: string;
     paths: Readonly<Record<string, readonly string[]>>;
@@ -9,8 +11,14 @@ export type AliasCacheEntry = {
     path: string;
 };
 
-export type AbsolutePathAliasTarget = { absolutePattern: string; baseDir: string; originalPattern: string };
-export type AbsolutePathAliasArray = { alias: string; targets: AbsolutePathAliasTarget[] }[];
+export type AbsolutePathAliasTarget = {
+    absolutePattern: string;
+    baseDir: string;
+    originalPattern: string;
+    parsedAbsolutePattern: ParsedAlias;
+    parsedOriginalPattern: ParsedAlias;
+};
+export type AbsolutePathAliasArray = { alias: string; parsedAlias: ParsedAlias; targets: AbsolutePathAliasTarget[] }[];
 
 export type PackageJsonContent = {
     [key: string]: unknown;
@@ -27,3 +35,5 @@ export type TsConfigContent = {
     };
     extends?: string | string[];
 };
+
+export type ReverseExtensionAlias = Record<string, string[]>;

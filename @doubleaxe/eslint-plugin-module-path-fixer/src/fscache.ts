@@ -84,3 +84,12 @@ export function fileExists(fileSystem: FileSystem, filePath: string) {
     }
     return false;
 }
+
+export function dirExists(fileSystem: FileSystem, filePath: string) {
+    try {
+        if (fileSystem.statSync(filePath).isDirectory()) return true;
+    } catch {
+        /**/
+    }
+    return false;
+}

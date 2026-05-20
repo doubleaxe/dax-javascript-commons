@@ -58,10 +58,11 @@ function loadTsconfigFromExtends(
     extendedConfigPath = normalizePath(extendedConfigPath);
     const config = loadTsconfig(fileSystem, extendedConfigPath);
 
-    if (config.compilerOptions?.baseUrl) {
-        const extendsDir = path.dirname(extendedConfigPath);
-        config.compilerOptions.absoluteBaseUrl = path.join(extendsDir, config.compilerOptions.baseUrl);
-    }
+    config.compilerOptions = config.compilerOptions ?? {};
+    const extendsDir = path.dirname(extendedConfigPath);
+    config.compilerOptions.absoluteBaseUrl = config.compilerOptions.baseUrl
+        ? path.join(extendsDir, config.compilerOptions.baseUrl)
+        : extendsDir;
 
     return config;
 }
@@ -80,10 +81,10 @@ function mergeTsconfigs(base: TsConfigContent | undefined, config: TsConfigConte
     };
 }
 
-export function buildTsconfigAliases(fileSystem: FileSystem, fileName: string): AliasEntry | null {
+export function buildTsconfigAliases(fileSystem: FileSystem, fileName: string): AliasEntry | undefined {
     const loaded = loadTsconfig(fileSystem, fileName);
     const paths = loaded.compilerOptions?.paths;
-    if (!paths) return null;
+    if (!paths) return undefined;
 
     const dirName = path.dirname(fileName);
     const baseUrl = normalizePath(
