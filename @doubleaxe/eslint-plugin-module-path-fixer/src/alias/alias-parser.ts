@@ -315,7 +315,7 @@ export function createAliasParser({
         return mappings;
     }
 
-    function clearCaches() {
+    function clearCache() {
         tsconfigCache.clear();
         packageJsonCache.clear();
         aliasMappingsCache.clear();
@@ -325,6 +325,8 @@ export function createAliasParser({
         getNearestTsJsConfig,
         getNearestPackageJson,
         getAliasMappings,
-        clearCaches,
+        clearCache,
     };
 }
+
+export type AliasParser = ReturnType<typeof createAliasParser>;

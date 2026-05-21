@@ -301,12 +301,13 @@ describe('resolve.tsconfig', () => {
         const resolver = createImportResolver({
             useTsConfig: false,
             extensions: ['.ts', '.js'],
-            manualTsConfigs: [
+            manualAliases: [
                 {
                     baseUrl: root,
                     paths: { '@manual/*': ['src/*'], '$base': ['./no-src/base', './src/components/base'] },
+                    source: 'manual',
                 },
-                { baseUrl: path.join(root, 'src'), paths: { '@manual-comp/*': ['./components/*'] } },
+                { baseUrl: path.join(root, 'src'), paths: { '@manual-comp/*': ['./components/*'] }, source: 'manual' },
             ],
         });
 

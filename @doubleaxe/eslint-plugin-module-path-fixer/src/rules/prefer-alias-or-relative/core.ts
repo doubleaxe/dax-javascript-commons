@@ -1,5 +1,6 @@
 import * as path from 'node:path/posix';
 
+import { parseAliasWithStar, type ParsedAlias } from '../../alias/utils.js';
 import { normalizePath } from '../../normalizer.js';
 import { createImportResolver, type ResolveInput, type ResolverLike } from '../../resolve.js';
 import type {
@@ -120,47 +121,6 @@ function buildResultFilePath(resultDir: string, inputSpecifier: InputSpecifier):
     throw new Error('unreachable');
 }
 
-function parseAliasWithStar(pattern: string) {
-    const isMatchAll = pattern === '*';
-    const starIndex = isMatchAll ? -1 : pattern.indexOf('*');
-    let headPart = '';
-    let tailPart = '';
-    if (!isMatchAll && starIndex >= 0) {
-        headPart = pattern.substring(0, starIndex);
-        tailPart = pattern.substring(starIndex + 1);
-    }
-
-    function matchStar(search: string) {
-        if (isMatchAll) return true;
-        if (starIndex < 0) return pattern === search;
-        return search.startsWith(headPart) && search.endsWith(tailPart);
-    }
-
-    function cutStar(search: string) {
-        if (isMatchAll) return search;
-        if (starIndex < 0) return '';
-        return search.substring(starIndex, search.length - tailPart.length);
-    }
-
-    function buildStar(part: string) {
-        if (isMatchAll) return part;
-        if (starIndex < 0) return '';
-        return `${headPart}${part}${tailPart}`;
-    }
-
-    return {
-        pattern,
-        isMatchAll,
-        isHaveStar: isMatchAll || starIndex >= 0,
-        haveTail: !!tailPart,
-        matchStar,
-        cutStar,
-        buildStar,
-    };
-}
-
-type ParsedAlias = ReturnType<typeof parseAliasWithStar>;
-
 type AliasInfo = { alias?: { alias: string } & PathDepth; reason: SpecifierReason };
 type ResultType = {
     aliasReason?: SpecifierReason;
@@ -180,7 +140,7 @@ export class PreferAliasOrRelativeCore {
             resolveCacheTtl: options.resolveCacheTtl,
             usePackageJson: options.usePackageJson,
             useTsConfig: options.useTsConfig,
-            manualTsConfigs: options.manualTsConfigs,
+            manualAliases: options.manualAliases,
         });
 
         this.options = {
