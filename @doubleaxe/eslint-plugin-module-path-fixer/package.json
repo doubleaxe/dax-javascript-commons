@@ -42,10 +42,8 @@
   },
   "dependencies": {
     "@typescript-eslint/utils": "^8.59.0",
-    "enhanced-resolve": "^5.21.2",
     "json5": "^2.2.3",
-    "lru-cache": "^11.3.5",
-    "tsconfig-paths": "^4.2.0"
+    "lru-cache": "^11.3.5"
   },
   "peerDependencies": {
     "eslint": "9.x"

@@ -1,10 +1,10 @@
-import type { AliasEntry } from '../../alias/types.js';
 import type { ResolvedImport } from '../../resolve.js';
+import type { ManualAliasEntry } from '../../types.js';
 
 export type PreferAliasOrRelativeCoreOptions = {
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
-    manualAliases?: readonly AliasEntry[];
+    manualAliases?: readonly ManualAliasEntry[];
     maxChildFolderSegments?: number;
     maxParentSegments?: number;
     optimization?: 'none' | 'shorter' | 'shorterEqual';

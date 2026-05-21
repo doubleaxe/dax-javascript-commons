@@ -1,8 +1,10 @@
 import * as path from 'node:path/posix';
 
+import type { AbsolutePathAliasTarget } from '../../alias/types.js';
 import { parseAliasWithStar, type ParsedAlias } from '../../alias/utils.js';
 import { normalizePath } from '../../normalizer.js';
-import { createImportResolver, type ResolveInput, type ResolverLike } from '../../resolve.js';
+import { createImportResolver, type ResolvedImport, type ResolveInput, type ResolverLike } from '../../resolve.js';
+import { ResolvedSpecifierKind } from '../../types.js';
 import type {
     DecisionKind,
     PreferAliasOrRelativeCoreOptions,
@@ -26,15 +28,15 @@ function buildRelativePath(from: string, to: string) {
     return relativePath;
 }
 
-function createResolvedFile(resolvedFile: string, importerDir: string) {
+function createResolvedFile(resolved: ResolvedImport) {
+    const { resolvedFile, importerDir } = resolved;
     const extension = path.extname(resolvedFile);
     const basename = path.basename(resolvedFile, extension);
     const resolvedDir = path.dirname(resolvedFile);
     const relativeDir = buildRelativePath(importerDir, resolvedDir);
 
     return {
-        resolvedFile,
-        importerDir,
+        ...resolved,
         basename,
         extension,
         resolvedDir,
@@ -68,32 +70,15 @@ function getPathDepth(fillePath: string) {
 
 type PathDepth = ReturnType<typeof getPathDepth>;
 
-const SpecifierKind = {
-    IndexFile: 0,
-    IndexDir: 1,
-    IndexDirEndingSlash: 2,
-    File: 3,
-} as const;
-
 function createInputSpecifier(normalizedSpecifier: string, resolvedFile: ResolvedFile) {
     let extension = path.extname(normalizedSpecifier);
     let basename = path.basename(normalizedSpecifier, extension);
     const haveSegments = normalizedSpecifier.includes('/');
     const isRelative = haveSegments && normalizedSpecifier.startsWith('.');
 
-    let kind: (typeof SpecifierKind)[keyof typeof SpecifierKind] = SpecifierKind.File;
-    if (resolvedFile.basename === 'index') {
-        // TODO - catch /index/index/index case?
-        if (basename === 'index') {
-            kind = SpecifierKind.IndexFile;
-        } else {
-            kind = SpecifierKind.IndexDir;
-            if (normalizedSpecifier.endsWith('/')) {
-                kind = SpecifierKind.IndexDirEndingSlash;
-            }
-            basename = '';
-            extension = '';
-        }
+    if (resolvedFile.specifierKind === 'IndexDir') {
+        basename = '';
+        extension = '';
     }
 
     return {
@@ -101,7 +86,7 @@ function createInputSpecifier(normalizedSpecifier: string, resolvedFile: Resolve
         basename,
         extension,
         filename: basename + extension,
-        kind,
+        kind: resolvedFile.specifierKind,
         isRelative,
     };
 }
@@ -110,13 +95,10 @@ type InputSpecifier = ReturnType<typeof createInputSpecifier>;
 
 function buildResultFilePath(resultDir: string, inputSpecifier: InputSpecifier): string {
     switch (inputSpecifier.kind) {
-        case SpecifierKind.File:
-        case SpecifierKind.IndexFile:
-            return path.join(resultDir, inputSpecifier.filename);
-        case SpecifierKind.IndexDir:
+        case ResolvedSpecifierKind.IndexDir:
             return resultDir;
-        case SpecifierKind.IndexDirEndingSlash:
-            return `${resultDir}/`;
+        default:
+            return path.join(resultDir, inputSpecifier.filename);
     }
     throw new Error('unreachable');
 }
@@ -154,7 +136,11 @@ export class PreferAliasOrRelativeCore {
 
     public evaluate(input: ResolveInput): PreferAliasOrRelativeDecision {
         const specifier = input.specifier;
-        const normalizedSpecifier = normalizePath(specifier);
+        let normalizedSpecifier = normalizePath(specifier);
+        if (normalizedSpecifier.endsWith('/')) {
+            // normalize ending slash to prevent ambigous resolutions
+            normalizedSpecifier = normalizedSpecifier.slice(0, -1);
+        }
         const resolved = this.resolver.resolve({
             ...input,
             specifier: normalizedSpecifier,
@@ -163,7 +149,7 @@ export class PreferAliasOrRelativeCore {
             return { kind: 'unresolved' };
         }
 
-        const resolvedFile = createResolvedFile(resolved.resolvedFile, resolved.importerDir);
+        const resolvedFile = createResolvedFile(resolved);
         const inputSpecifier = createInputSpecifier(normalizedSpecifier, resolvedFile);
 
         let converted: ResultType;
@@ -266,7 +252,9 @@ export class PreferAliasOrRelativeCore {
         aliasReason?: SpecifierReason
     ): ResultType {
         let candidate = buildResultFilePath(resolvedFile.relativeDir, inputSpecifier);
-        if (!candidate.startsWith('.')) candidate = `./${candidate}`;
+        if (!path.posix.isAbsolute(candidate) && !path.win32.isAbsolute(candidate)) {
+            if (!candidate.startsWith('.')) candidate = `./${candidate}`;
+        }
 
         const candidateValidation = this.resolver.resolve({
             importerDir: resolvedFile.importerDir,
@@ -293,17 +281,9 @@ export class PreferAliasOrRelativeCore {
         const aliasMappings = this.resolver.getAliasMappings(resolvedFile.importerDir);
 
         for (const aliasMapping of aliasMappings) {
-            const parsedAlias = parseAliasWithStar(aliasMapping.alias);
+            const parsedAlias = aliasMapping.parsedAlias;
             for (const aliasTarget of aliasMapping.targets) {
-                const parsedAbsoluteTarget = parseAliasWithStar(aliasTarget.absolutePattern);
-                const aliasCandidate = this.checkAliasCandidate(
-                    parsedAlias,
-                    parsedAbsoluteTarget,
-                    aliasTarget.originalPattern,
-                    aliasTarget.baseDir,
-                    inputSpecifier,
-                    resolvedFile
-                );
+                const aliasCandidate = this.checkAliasCandidate(parsedAlias, aliasTarget, inputSpecifier, resolvedFile);
 
                 if (aliasCandidate) {
                     candidateAliases.push(aliasCandidate);
@@ -342,12 +322,16 @@ export class PreferAliasOrRelativeCore {
 
     private checkAliasCandidate(
         alias: ParsedAlias,
-        absoluteTarget: ParsedAlias,
-        relativeTarget: string,
-        targetBaseDir: string,
+        aliasTarget: AbsolutePathAliasTarget,
         inputSpecifier: InputSpecifier,
         resolvedFile: ResolvedFile
     ) {
+        const {
+            parsedAbsolutePattern: absoluteTarget,
+            originalPattern: relativeTarget,
+            baseDir: targetBaseDir,
+        } = aliasTarget;
+
         let matchedFile = resolvedFile.resolvedFile;
         let foundMatch = absoluteTarget.matchStar(matchedFile);
         if (!foundMatch) {
@@ -384,8 +368,10 @@ export class PreferAliasOrRelativeCore {
         // we also cannot normalize alias, so '@\\*' is different
         // also '@/src' pointing to index file
         let normalizedTarget = normalizePath(relativeTarget);
-        if (!normalizedTarget.startsWith('.')) {
-            normalizedTarget = `./${normalizedTarget}`;
+        if (!path.posix.isAbsolute(normalizedTarget) && !path.win32.isAbsolute(normalizedTarget)) {
+            if (!normalizedTarget.startsWith('.')) {
+                normalizedTarget = `./${normalizedTarget}`;
+            }
         }
         const parsedTarget = parseAliasWithStar(normalizedTarget);
         if (!parsedTarget.matchStar(relativePath)) {

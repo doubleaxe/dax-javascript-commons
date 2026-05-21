@@ -76,11 +76,16 @@ export class ExtensionsCore {
             return { reason: 'unresolved' };
         }
 
-        const { resolvedFile } = resolved;
+        const { resolvedFile, specifierClass } = resolved;
 
         const nextSpecifier = this.buildNextSpecifier(input.specifier, resolvedFile);
         if (nextSpecifier === input.specifier) {
             return { reason: 'unchanged' };
+        }
+
+        if (specifierClass === 'StaticAlias' || specifierClass === 'StarAliasWithTail') {
+            // cannot rewrite extension of static alias
+            return { reason: 'unsafe' };
         }
 
         if (!this.isSafeRewrite(input, resolvedFile, nextSpecifier)) {

@@ -1,10 +1,10 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 
-import type { AliasEntry } from './alias/types.js';
 import type { ResolveInput } from './resolve.js';
+import type { ManualAliasEntry } from './types.js';
 
 export type ModulePathFixerSettings = {
-    alias?: readonly AliasEntry[];
+    alias?: readonly ManualAliasEntry[];
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
     resolveCacheTtl?: number;
@@ -23,7 +23,7 @@ export function parseModulePathFixerSettings(settingsInput: unknown): ModulePath
         return {};
     }
 
-    const alias = Array.isArray(namespace['alias']) ? (namespace['alias'] as readonly AliasEntry[]) : undefined;
+    const alias = Array.isArray(namespace['alias']) ? (namespace['alias'] as readonly ManualAliasEntry[]) : undefined;
     const extensionAliasRecord = asRecord(namespace['extensionAlias']);
     const extensionAlias = extensionAliasRecord
         ? (Object.fromEntries(

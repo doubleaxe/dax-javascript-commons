@@ -1,10 +1,9 @@
+import type { ManualAliasEntry, ResolvedSpecifierKindType, SpecifierClassType } from '../types.js';
 import type { ParsedAlias } from './utils.js';
 
 export type AliasEntry = {
-    baseUrl: string;
-    paths: Readonly<Record<string, readonly string[]>>;
     source: 'manual' | 'package' | 'tsconfig';
-};
+} & ManualAliasEntry;
 
 export type AliasCacheEntry = {
     alias: AbsolutePathAliasArray;
@@ -36,4 +35,11 @@ export type TsConfigContent = {
     extends?: string | string[];
 };
 
-export type ReverseExtensionAlias = Record<string, string[]>;
+export type ResolvedPath = {
+    path: string;
+    specifierKind: ResolvedSpecifierKindType;
+};
+
+export type ResolvedAlias = {
+    specifierClass: SpecifierClassType;
+} & ResolvedPath;

@@ -2,14 +2,15 @@ import * as path from 'node:path/posix';
 
 import { dirExists, fileExists, type FileSystem } from '../fscache.js';
 import { normalizePath } from '../normalizer.js';
-import type { AbsolutePathAliasArray, ReverseExtensionAlias } from './types.js';
+import type { ReverseExtensionAlias, SpecifierClassType } from '../types.js';
+import type { AbsolutePathAliasArray, ResolvedAlias, ResolvedPath } from './types.js';
 
 export function tryResolveTargetPath(
     fileSystem: FileSystem,
     targetPath: string,
     extensions: readonly string[],
     extensionAlias: ReverseExtensionAlias
-): string | undefined {
+): ResolvedPath | undefined {
     targetPath = normalizePath(targetPath);
 
     const targetExtension = path.extname(targetPath);
@@ -20,7 +21,7 @@ export function tryResolveTargetPath(
         for (const extension of extensions) {
             const tryName = `${targetPath}${extension}`;
             if (fileExists(fileSystem, tryName)) {
-                return tryName;
+                return { path: tryName, specifierKind: 'FileWithoutExtension' };
             }
         }
     } else {
@@ -30,17 +31,24 @@ export function tryResolveTargetPath(
         let tryOriginalName = true;
         if (alias) {
             for (const extension of extensions) {
-                if (extension === targetExtension) tryOriginalName = false;
+                const isOriginalName = extension === targetExtension;
+                if (isOriginalName) tryOriginalName = false;
                 const tryName = `${targetWithoutExtension}${extension}`;
                 if (fileExists(fileSystem, tryName)) {
-                    return tryName;
+                    return {
+                        path: tryName,
+                        specifierKind: isOriginalName ? 'FileWithExtension' : 'FileWithExtensionAlias',
+                    };
                 }
             }
         }
 
         if (tryOriginalName) {
             if (fileExists(fileSystem, targetPath)) {
-                return targetPath;
+                return {
+                    path: targetPath,
+                    specifierKind: 'FileWithExtension',
+                };
             }
         }
     }
@@ -50,7 +58,10 @@ export function tryResolveTargetPath(
         for (const extension of extensions) {
             const tryName = `${indexPath}${extension}`;
             if (fileExists(fileSystem, tryName)) {
-                return tryName;
+                return {
+                    path: tryName,
+                    specifierKind: 'IndexDir',
+                };
             }
         }
     }
@@ -105,15 +116,24 @@ export function resolveAliasTargetPath(
     aliasMappings: AbsolutePathAliasArray,
     extensions: readonly string[],
     extensionAlias: ReverseExtensionAlias
-): string | undefined {
+): ResolvedAlias | undefined {
     for (const alias of aliasMappings) {
-        if (!alias.parsedAlias.matchStar(specifier)) continue;
-        const specifierPart = alias.parsedAlias.cutStar(specifier);
+        const parsedAlias = alias.parsedAlias;
+        if (!parsedAlias.matchStar(specifier)) continue;
+        const specifierPart = parsedAlias.cutStar(specifier);
         for (const target of alias.targets) {
             const targetCandidate = target.parsedAbsolutePattern.buildStar(specifierPart);
             const resolvedTarget = tryResolveTargetPath(fileSystem, targetCandidate, extensions, extensionAlias);
             if (resolvedTarget) {
-                return resolvedTarget;
+                let specifierClass: SpecifierClassType;
+                if (!parsedAlias.isHaveStar) {
+                    specifierClass = 'StaticAlias';
+                } else if (parsedAlias.haveTail) {
+                    specifierClass = 'StarAliasWithTail';
+                } else {
+                    specifierClass = 'StarAlias';
+                }
+                return { ...resolvedTarget, specifierClass };
             }
         }
     }

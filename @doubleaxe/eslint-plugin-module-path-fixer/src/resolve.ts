@@ -4,10 +4,16 @@ import * as path from 'node:path/posix';
 import { LRUCache } from 'lru-cache';
 
 import { type AliasParser, buildAbsoluteAliasOptions, createAliasParser } from './alias/alias-parser.js';
-import type { AbsolutePathAliasArray, AliasCacheEntry, AliasEntry, ReverseExtensionAlias } from './alias/types.js';
+import type { AbsolutePathAliasArray, AliasCacheEntry, AliasEntry, ResolvedPath } from './alias/types.js';
 import { resolveAliasTargetPath, tryResolveTargetPath } from './alias/utils.js';
 import { createFsCache } from './fscache.js';
 import { normalizePath } from './normalizer.js';
+import type {
+    ManualAliasEntry,
+    ResolvedSpecifierKindType,
+    ReverseExtensionAlias,
+    SpecifierClassType,
+} from './types.js';
 
 const DEFAULT_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'] as const;
 const DEFAULT_EXTENSION_ALIAS = {
@@ -20,6 +26,8 @@ const DEFAULT_EXTENSION_ALIAS = {
 export type ResolvedImport = Readonly<{
     importerDir: string;
     resolvedFile: string;
+    specifierClass: SpecifierClassType;
+    specifierKind: ResolvedSpecifierKindType;
 }>;
 
 export type ResolveInput = {
@@ -38,16 +46,17 @@ export type ResolveImportOptions = {
     errorLog?: boolean;
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
-    manualAliases?: readonly AliasEntry[];
+    manualAliases?: readonly ManualAliasEntry[];
     resolveCacheTtl?: number;
     usePackageJson?: boolean | readonly string[] | string;
     useTsConfig?: boolean | readonly string[] | string;
 };
 
 type NormaizedResolveImportOptions = {
+    manualAliases: readonly AliasEntry[];
     packageJsonNames: string[] | undefined;
     tsconfigNames: string[] | undefined;
-} & Required<Omit<ResolveImportOptions, 'usePackageJson' | 'useTsConfig'>>;
+} & Required<Omit<ResolveImportOptions, 'manualAliases' | 'usePackageJson' | 'useTsConfig'>>;
 
 function isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -74,7 +83,7 @@ function normalizeManualPathsRecord(paths: unknown): Readonly<Record<string, rea
     return normalized;
 }
 
-function isManualAliasEntry(value: unknown): value is AliasEntry {
+function isManualAliasEntry(value: unknown): value is ManualAliasEntry {
     return (
         isObject(value) &&
         typeof value['baseUrl'] === 'string' &&
@@ -83,7 +92,7 @@ function isManualAliasEntry(value: unknown): value is AliasEntry {
     );
 }
 
-function normalizeManualAliases(manualAliases: readonly AliasEntry[] | undefined): readonly AliasEntry[] {
+function normalizeManualAliases(manualAliases: readonly ManualAliasEntry[] | undefined): readonly AliasEntry[] {
     return (manualAliases ?? [])
         .filter((entry) => isManualAliasEntry(entry))
         .map(
@@ -176,7 +185,7 @@ function buildReverseExtensionAliases(extensionAlias: Readonly<Record<string, st
     return reverseAlias;
 }
 
-function serializeManualAliases(configs: readonly AliasEntry[]): string {
+function serializeManualAliases(configs: readonly ManualAliasEntry[]): string {
     return configs
         .map((entry) => {
             const serializedPaths = Object.keys(entry.paths)
@@ -328,7 +337,8 @@ class ImportResolverImpl implements ResolverLike {
             return null;
         }
 
-        let resolvedFile: string | undefined;
+        let resolvedFile: ResolvedPath | undefined;
+        let specifierClass: SpecifierClassType | undefined;
         if (specifier.startsWith('.')) {
             resolvedFile = tryResolveTargetPath(
                 ImportResolverImpl.fileSystem,
@@ -336,21 +346,37 @@ class ImportResolverImpl implements ResolverLike {
                 this.options.extensions,
                 this.extensionAlias
             );
+            specifierClass = 'Relative';
         } else {
-            resolvedFile = resolveAliasTargetPath(
-                ImportResolverImpl.fileSystem,
-                specifier,
-                this.aliasParser.getAliasMappings(importerDir),
-                this.options.extensions,
-                this.extensionAlias
-            );
+            const normalizedSpecifier = normalizePath(specifier);
+            if (path.posix.isAbsolute(normalizedSpecifier) || path.win32.isAbsolute(normalizedSpecifier)) {
+                resolvedFile = tryResolveTargetPath(
+                    ImportResolverImpl.fileSystem,
+                    normalizedSpecifier,
+                    this.options.extensions,
+                    this.extensionAlias
+                );
+                specifierClass = 'Absolute';
+            } else {
+                const resolvedAlias = resolveAliasTargetPath(
+                    ImportResolverImpl.fileSystem,
+                    specifier,
+                    this.aliasParser.getAliasMappings(importerDir),
+                    this.options.extensions,
+                    this.extensionAlias
+                );
+                resolvedFile = resolvedAlias;
+                specifierClass = resolvedAlias?.specifierClass;
+            }
         }
 
-        if (!resolvedFile) return null;
+        if (!resolvedFile || !specifierClass) return null;
 
         return {
-            resolvedFile,
+            resolvedFile: resolvedFile.path,
             importerDir,
+            specifierClass,
+            specifierKind: resolvedFile.specifierKind,
         };
     }
 }

@@ -1,8 +1,8 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type { JSONSchema4 } from '@typescript-eslint/utils/json-schema';
 
-import type { AliasEntry } from './alias/types.js';
 import { createExtensionsCore } from './rules/extensions/index.js';
+import type { ManualAliasEntry } from './types.js';
 import {
     buildFixedLiteral,
     getImportEqualsLiteral,
@@ -12,7 +12,7 @@ import {
 } from './util.js';
 
 type ExtensionsRuleOptions = {
-    alias?: readonly AliasEntry[];
+    alias?: readonly ManualAliasEntry[];
     extension?: 'always' | 'never';
     index?: 'always' | 'never';
 };

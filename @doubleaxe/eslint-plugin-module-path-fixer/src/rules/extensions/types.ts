@@ -1,9 +1,9 @@
-import type { AliasEntry } from '../../alias/types.js';
+import type { ManualAliasEntry } from '../../types.js';
 
 export type ExtensionsCoreOptions = {
     extensionAlias?: Readonly<Record<string, string>>;
     extensions?: readonly string[];
-    manualAliases?: readonly AliasEntry[];
+    manualAliases?: readonly ManualAliasEntry[];
     preferDirectoryIndex?: boolean;
     preferExtension?: boolean;
     resolveCacheTtl?: number;
